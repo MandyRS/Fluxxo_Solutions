@@ -4,352 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluxxo Solutions</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-P94CZE0YZT"></script>
-    
-    <style>
-        html, body {
-            scroll-behavior: smooth;
-        }
-
-        /* Sessões */
-        section {
-            min-height: 60vh;
-            display: flex;
-            align-items: center;
-            padding: 40px 20px;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            color: #333;
-        }
-        .overlay {
-            background-color: rgba(255,255,255,0.95);
-            padding: 30px;
-            border-radius: 8px;
-            width: 100%;
-        }
-
-        /* Hero */
-        #hero {
-            background-color: #0d6efd;
-            color: white;
-            height: 100vh;
-        }
-        .section-title {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        #sobre{
-            height: 100vh;
-        }
-
-        .btn-circle {
-    width: 60px;
-    height: 60px;
-    padding: 0;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.btn-circle:hover {
-    transform: translateY(5px);
-    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-}
-.scroll-down svg {
-    animation: bounce 2s infinite;
-    color: #0d6efd; /* cor azul do Bootstrap */
-}
-#servicos {
-    height: 100vh;
-}
-
-
-
-    </style>
+    <title>Fluxxo Solutions | Gestão Financeira SaaS</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
+    <nav class="navbar">
+        <div class="logo">{{ empresa.nome }}</div>
+        <ul class="nav-links">
+            <li><a href="#features">Funcionalidades</a></li>
+            <li><a href="#reports">Relatórios</a></li>
+            <li><a href="/login" class="btn-login">Acessar Sistema</a></li>
+        </ul>
+    </nav>
 
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand" href="{% url 'core:index' %}">Fluxxo Solutions</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-                
-                    <li class="nav-item"><a class="nav-link" href="#sobre">Sobre</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#servicos">Serviços</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#contato">Contato</a></li>
-                {% if user.is_authenticated %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'core:logout' %}">Sair</a></li>
-                {% else %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'core:selecionar_sistema' %}">Login</a></li>
-                {% endif %}
-            </ul>
-        </div>
-    </div>
-</nav>
-
-<!-- Hero -->
-<section class="text-center" id="hero">
-    <div class="container">
-        <h1 class="display-4">Bem-vindo à Fluxxo Solutions</h1>
-        <p class="lead">Soluções digitais personalizadas para sua empresa crescer com eficiência.</p>
-    </div>
-    <!-- Indicador para rolar -->
-        <div class="scroll-down mt-4 text-center">
-            <a href="#sobre" class="btn btn-light btn-circle shadow">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-arrow-down" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 1 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 1 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/>
-                </svg>
-            </a>
-        </div>
-</section>
-
-<!-- Sobre a Empresa -->
-<section id="sobre" style="background-color: #f5f5f5;">
-    <div class="container py-5">
-        <div class="row align-items-center">
-            <!-- Coluna do Texto -->
-            <div class="col-md-6">
-                <h2 class="section-title mb-4">Sobre a Empresa</h2>
-                <p class="fade-left lead">
-                 A <strong>Fluxxo Solutions</strong> cria sistemas, planilhas e ferramentas digitais que tornam processos administrativos e financeiros mais rápidos e eficientes.
-                </p>
-                <p class="fade-left lead">
-                    Nosso objetivo é aumentar a produtividade da sua empresa e reduzir erros operacionais, oferecendo soluções práticas, inteligentes e sob medida para cada negócio.
-                </p>
-                
-            </div>
-            <!-- Coluna da Imagem -->
-            <div class="col-md-6 text-center">
-                <img src="https://img.freepik.com/fotos-gratis/par-posar-enquanto-punho-esbarrar_23-2148372360.jpg" alt="Sobre a Empresa" class="img-fluid rounded shadow fade-left">
-               </div>
-        </div>
-    </div>
-</section>
-
-<!-- Serviços -->
-<section id="servicos" style="background-color: #f8f9fa; padding: 80px 0;">
-    <div class="container">
-        <h2 class="section-title text-center mb-5">Nossos Serviços</h2>
-
-        <!-- Parte 1: O que fazemos -->
-        <h3 class="text-center mb-4">O que fazemos?</h3>
-        <div class="row justify-content-center g-4 mb-5">
-            <!-- Card Planilhas Personalizadas -->
-            <div class="col-md-4 fade-left">
-                <div class="card card-service text-center p-4 h-100 shadow-sm" 
-                     style="background-color: #ffffff; border-top: 4px solid #0d6efd; transition: transform 0.3s, box-shadow 0.3s;">
-           
-                     <h5 class="card-title mb-2">Planilhas Personalizadas</h5>
-                    <p class="card-text">Planilhas financeiras, de controle de vendas e gestão administrativa totalmente personalizadas para sua empresa.</p>
-                </div>
-            </div>
-
-            <!-- Card Desenvolvimento Web -->
-            <div class="col-md-4 fade-right">
-                <div class="card card-service text-center p-4 h-100 shadow-sm" 
-                     style="background-color: #f1f3f5; border-top: 4px solid #6c757d; transition: transform 0.3s, box-shadow 0.3s;">
-                    <h5 class="card-title mb-2">Sites</h5>
-                    <p class="card-text">Criação de sites responsivos e modernos, otimizados para performance e presença online profissional.</p>
-                </div>
-            </div>
-
-            <!-- Card Sistemas Personalizados -->
-            <div class="col-md-4 fade-left">
-                <div class="card card-service text-center p-4 h-100 shadow-sm" 
-                     style="background-color: #ffffff; border-top: 4px solid #0d6efd; transition: transform 0.3s, box-shadow 0.3s;">
-                    <h5 class="card-title mb-2">Sistemas Personalizados</h5>
-                    <p class="card-text">ERP, CRM e sistemas sob medida para otimizar processos internos e aumentar a produtividade da sua empresa.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Parte 2: Sistemas já criados -->
-        <h3 class="text-center mb-4">O que já criamos?</h3>
-        <div class="row justify-content-center g-4 mb-4">
-            <!-- Card Borderôs -->
-            <div class="col-md-4 fade-right">
-                <div class="card card-service text-center p-4 h-100 shadow-sm" 
-                     style="background-color: #f1f3f5; border-top: 4px solid #6c757d; transition: transform 0.3s, box-shadow 0.3s;">
-                    <h5 class="card-title mb-2">Sistema de Borderôs</h5>
-                    <p class="card-text">Controle completo de Borderôs, com cadastro de boletos, contas a pagar e receber, cálculo de valores e geração de relatórios em PDF e Excel.</p>
-                </div>
-            </div>
-
-            <!-- Card Orçamentos -->
-            <div class="col-md-4 fade-left">
-                <div class="card card-service text-center p-4 h-100 shadow-sm" 
-                     style="background-color: #ffffff; border-top: 4px solid #0d6efd; transition: transform 0.3s, box-shadow 0.3s;">
-                    <h5 class="card-title mb-2">Sistema de Orçamentos</h5>
-                    <p class="card-text">Geração e gestão de orçamentos, controle de clientes, produtos e serviços em um sistema prático e funcional.</p>
-                </div>
-            </div>
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Controle financeiro de alto nível para sua empresa.</h1>
+            <p>Gerencie fluxo de caixa, emita relatórios inteligentes e tome decisões baseadas em dados com nossa plataforma SaaS.</p>
+            <div class="hero-btns">
+                <button class="btn-primary">Começar Agora</button>
             
-            <div class="col-md-4 fade-left">
-                <div class="card card-service text-center p-4 h-100 shadow-sm" 
-                     style="background-color: #f1f3f5; border-top: 4px solid #6c757d; transition: transform 0.3s, box-shadow 0.3s;">
-                    <h5 class="card-title mb-2">Planilhas Personalizadas</h5>
-                    <p class="card-text">Diversas planilhas que estão ajudando empresas, em uma melhor administração.</p>
-                </div>
             </div>
         </div>
-
-        <div class="text-center mt-5">
-            <button class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#modalContato">
-                Entre em Contato
-            </button>
-        </div>
-    </div>
-</section>
-
-
-<!-- Footer -->
-<!-- Bootstrap Icons CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-
-<footer class="bg-dark text-white text-center py-4" id="contato">
-    <div class="mb-3">
-        <h5>Redes Sociais</h5>
-        <a href="https://www.facebook.com/fluxxosolutions" class="text-white me-3" target="_blank">
-            <i class="bi bi-facebook" style="font-size: 1.5rem;"></i>
-        </a>
-        <a href="https://www.instagram.com/fluxxosolutions" class="text-white me-3" target="_blank">
-            <i class="bi bi-instagram" style="font-size: 1.5rem;"></i>
-        </a>
-        <a href="https://www.linkedin.com/company/fluxxosolutions" class="text-white" target="_blank">
-            <i class="bi bi-linkedin" style="font-size: 1.5rem;"></i>
-        </a>
-    </div>
-    <div class="mb-3">
-        <h5>Localização</h5>
-        <p>Atendimento Online, João Pessoa - PB</p>
-    </div>
-    <div class="container">
-        &copy; 2025 Fluxxo Solutions. Todos os direitos reservados.
-    </div>
-</footer>
-
-
-<!-- Modal Contato -->
-<div class="modal fade" id="modalContato" tabindex="-1" aria-labelledby="modalContatoLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <form id="formContato">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalContatoLabel">Entre em Contato</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-2">
-                    <label>Nome</label>
-                    <input type="text" class="form-control" required>
-                </div>
-                <div class="mb-2">
-                    <label>Serviço de Interesse</label>
-                    <select class="form-select" required>
-                        <option value="" disabled selected>Selecione um serviço</option>
-                        <option value="Desenvolvimento Web">Desenvolvimento Web</option>
-                        <option value="Planilhas Personalizadas">Planilhas Personalizadas</option>
-                        <option value="Sistemas Personalizados">Sistemas Personalizados</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Enviar</button>
+        
+        <div class="hero-dashboard">
+            <div class="glass-card">
+                <p>Saldo em Conta</p>
+                <h3>R$ 45.230,00</h3>
+                <div class="mini-chart"></div>
             </div>
         </div>
-    </form>
-  </div>
-</div>
+    </header>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<script>
-$(document).ready(function(){
-    // Smooth scroll
-    $('a[href^="#"]').click(function(e){
-        e.preventDefault();
-        $('html, body').animate({ scrollTop: $($(this).attr('href')).offset().top }, 600);
-    });
-
-    // Hover nos cards
-    $('.card-service').hover(
-        function(){
-            $(this).animate({ marginTop: "-5px" }, 200);
-            $(this).css("box-shadow", "0 6px 15px rgba(0,0,0,0.2)");
-        },
-        function(){
-            $(this).animate({ marginTop: "0px" }, 200);
-            $(this).css("box-shadow", "none");
-        }
-    );
-
-    // Fade-in ao scroll lateral
-    function checkFade() {
-        $('.fade-left, .fade-right').each(function(){
-            var bottom_of_element = $(this).offset().top + $(this).outerHeight();
-            var bottom_of_window = $(window).scrollTop() + $(window).height();
-            if(bottom_of_window > bottom_of_element - 50){
-                $(this).animate({ 'opacity': '1', 'transform': 'translateX(0)' }, 500);
-            }
-        });
-    }
-
-
-    $(window).scroll(checkFade);
-    checkFade(); // verificar ao carregar
-
-    
-$(window).on('scroll', function() {
-    $('.fade-left, .fade-right').each(function() {
-        var bottom_of_element = $(this).offset().top + $(this).outerHeight();
-        var bottom_of_window = $(window).scrollTop() + $(window).height();
-        if(bottom_of_window > bottom_of_element - 50){
-            $(this).addClass('visible');
-        }
-    });
-});
-$(document).ready(function() {
-    $('#formContato').on('submit', function(e) {
-        e.preventDefault(); // impede o envio padrão do form
-
-        // Captura os dados do formulário
-        var nome = $(this).find('input[type="text"]').val();
-        var servico = $(this).find('select').val();
-        var mensagem = $(this).find('textarea').val();
-
-        // Monta a mensagem que será enviada
-        var texto = `Olá! Meu nome é ${nome} tenho interesse em ${servico}!`;
-
-        // Número do WhatsApp do destinatário (coloque seu número aqui)
-        var numero = "5583921457757"; // formato: código do país + DDD + número
-
-        // URL do WhatsApp
-        var url = `https://wa.me/${numero}?text=${texto}`;
-
-        // Abre o WhatsApp em nova aba
-        window.open(url, "_blank");
-    });
-});
-
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-P94CZE0YZT');
-});
-</script>
+    <script src="static/js/main.js"></script>
 </body>
 </html>

@@ -35,3 +35,24 @@ class EmpresaForm(forms.ModelForm):
     class Meta:
         model = Empresa
         fields = ['nome', 'cnpj', 'telefone', 'endereco', 'logo']
+
+
+# ------------------------
+# FLUXO BANCÁRIO
+# ------------------------
+from .models import Banco, LancamentoBancario
+
+class BancoForm(forms.ModelForm):
+    class Meta:
+        model = Banco
+        fields = ['nome', 'agencia', 'conta', 'saldo_inicial']
+
+
+class LancamentoBancarioForm(forms.ModelForm):
+    class Meta:
+        model = LancamentoBancario
+        fields = ['data', 'descricao', 'valor', 'tipo', 'classificacao', 'banco']
+        widgets = {
+            'data': forms.DateInput(attrs={'type': 'date'}),
+            'valor': forms.NumberInput(attrs={'step': '0.01'}),
+        }

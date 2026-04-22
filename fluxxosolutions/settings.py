@@ -11,7 +11,11 @@ SECRET_KEY = 'sua-chave-secreta-aqui'
 DEBUG = True
 
 # Hosts permitidos
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://localhost:8000",
+]
 
 # Aplicativos instalados
 INSTALLED_APPS = [

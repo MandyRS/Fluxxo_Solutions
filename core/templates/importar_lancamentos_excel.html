@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h2>Importar Lançamentos Bancários via Excel</h2>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="arquivo">Selecione o arquivo Excel:</label>
+        <input type="file" name="arquivo" id="arquivo" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Importar</button>
+    <a href="{% url 'core:baixar_planilha_exemplo' %}" class="btn btn-link">Baixar planilha exemplo</a>
+</form>
+{% endblock %}

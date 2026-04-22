@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container my-4">
+  <h2 class="mb-3">Estoque</h2>
+  <ul class="nav nav-tabs mb-3" id="estoqueTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-estoque" data-bs-toggle="tab" data-bs-target="#estoque-lista" type="button" role="tab">Estoque</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-fluxo" data-bs-toggle="tab" data-bs-target="#estoque-fluxo" type="button" role="tab">Fluxo de Estoque</button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="estoqueTabsContent">
+
+    <!-- Aba Estoque -->
+    <div class="tab-pane fade show active" id="estoque-lista" role="tabpanel">
+      <div class="row mb-2">
+        <div class="col-md-4 d-flex align-items-center">
+          <h5 class="mb-0 me-3">Produtos em Estoque</h5>
+          <select id="filtroSituacao" class="form-select form-select-sm w-auto">
+            <option value="">Todas as Situações</option>
+            <option value="critico">Crítico</option>
+            <option value="medio">Médio</option>
+            <option value="alto">Alto</option>
+          </select>
+        </div>
+        <div class="col-md-4 offset-md-4">
+          <input type="text" id="buscaItem" class="form-control form-control-sm" placeholder="Buscar por nome ou código...">
+        </div>
+      </div>
+      <table class="table table-striped table-hover align-middle" id="tabelaEstoque">
+        <thead class="table-light">
+          <tr>
+            <th>Código</th>
+            <th>Nome</th>
+            <th>Peso</th>
+            <th>Unidade</th>
+            <th>Categoria</th>
+            <th>Estoque Atual</th>
+            <th>Situação</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in itens %}
+          <tr>
+            <td>{{ item.codigo|default:"-" }}</td>
+            <td>{{ item.nome }}</td>
+            <td>{% if item.produto %}{{ item.produto.peso|floatformat:'2g' }}{% else %}-{% endif %}</td>
+            <td>{% if item.produto %}{{ item.produto.unidade }}{% else %}{{ item.unidade }}{% endif %}</td>
+            <td>{% if item.produto %}{{ item.produto.get_categoria_display }}{% else %}-{% endif %}</td>
+            <td>{{ item.quantidade|floatformat:2 }}</td>
+            <td>
+              {% if item.quantidade <= 10 %}
+                <span class="badge bg-danger">Crítico</span>
+              {% elif item.quantidade > 10 and item.quantidade <= 100 %}
+                <span class="badge bg-warning text-dark">Médio</span>
+              {% else %}
+                <span class="badge bg-success">Alto</span>
+              {% endif %}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary btnVerMovimentacoes" data-id="{{ item.id }}">Ver Movimentações</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center">Nenhum item no estoque.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Aba Fluxo de Estoque -->
+    <div class="tab-pane fade" id="estoque-fluxo" role="tabpanel">
+      <div class="row mb-2 align-items-center">
+        <div class="col-md-3">
+          <select id="filtroTipoMov" class="form-select form-select-sm">
+            <option value="">Todos</option>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <input type="text" id="buscaMov" class="form-control form-control-sm" placeholder="Buscar por produto, categoria ou usuário...">
+        </div>
+        <div class="col-md-2">
+          <input type="date" id="filtroDataIni" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+          <input type="date" id="filtroDataFim" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2 d-flex justify-content-end">
+          <button class="btn btn-primary btn-sm" id="btnNovoItemFluxo" type="button">Novo Processo</button>
+        </div>
+      </div>
+      <table class="table table-striped table-hover align-middle" id="tabelaFluxoEstoque">
+        <thead class="table-light">
+          <tr>
+            <th>Data</th>
+            <th>Produto</th>
+            <th>Categoria</th>
+            <th>Tipo</th>
+            <th>Quantidade</th>
+            <th>Usuário</th>
+            <th>Observação</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mov in movimentacoes %}
+          <tr>
+            <td>{{ mov.data }}</td>
+            <td>{{ mov.item.nome }}</td>
+            <td>{% if mov.item.produto %}{{ mov.item.produto.get_categoria_display }}{% else %}-{% endif %}</td>
+            <td>{{ mov.get_tipo_display }}</td>
+            <td>{{ mov.quantidade|floatformat:2 }}</td>
+            <td>{{ mov.criado_por.username }}</td>
+            <td>{{ mov.observacao }}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger desfazer-mov" data-id="{{ mov.id }}">Desfazer</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center">Nenhuma movimentação registrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Wizard Movimentação Estoque -->
+<div class="modal fade" id="modalWizardMov" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form id="formWizardMov">{% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Movimentação de Estoque (Avançado)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Tipo -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de Movimentação</label>
+            <div class="btn-group" role="group">
+              <input type="radio" class="btn-check" name="wizard_tipo" id="wizard-tipo-entrada" value="entrada" autocomplete="off" checked>
+              <label class="btn btn-outline-success" for="wizard-tipo-entrada">Entrada</label>
+              <input type="radio" class="btn-check" name="wizard_tipo" id="wizard-tipo-saida" value="saida" autocomplete="off">
+              <label class="btn btn-outline-danger" for="wizard-tipo-saida">Saída</label>
+            </div>
+          </div>
+          <hr>
+          <!-- Produtos -->
+          <div class="mb-1 d-flex align-items-center justify-content-between">
+            <label class="form-label fw-semibold mb-0">Produtos</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnAdicionarProduto">+ Adicionar Produto</button>
+          </div>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered align-middle" id="wizardTabelaProdutos">
+              <thead class="table-light">
+                <tr>
+                  <th>Categoria</th>
+                  <th>Produto</th>
+                  <th>Estoque Atual</th>
+                  <th>Quantidade</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <hr>
+          <!-- Perdas -->
+          <div class="mb-1 d-flex align-items-center justify-content-between">
+            <label class="form-label fw-semibold mb-0">Registrar Perdas <span class="text-muted fw-normal">(opcional)</span></label>
+            <button type="button" class="btn btn-outline-danger btn-sm" id="btnAdicionarPerda">+ Adicionar Perda</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle" id="wizardTabelaPerdas">
+              <thead class="table-light">
+                <tr>
+                  <th>Categoria</th>
+                  <th>Produto</th>
+                  <th>Estoque Atual</th>
+                  <th>Quantidade Perdida</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Movimentações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Opções de categoria reutilizáveis
+var catOptions = '<option value="produto">Produto Final</option>' +
+  '<option value="materia_prima">Matéria Prima</option>' +
+  '<option value="embalagem">Embalagem</option>' +
+  '<option value="tampa">Tampa</option>' +
+  '<option value="rotulo">Rótulo</option>';
+
+// Cria uma linha padrão para produto ou perda
+function criarLinha(prefixo, idx) {
+  return '<tr>' +
+    '<td><select name="' + prefixo + '_categoria_' + idx + '" class="form-select form-select-sm selectCategoria" data-prefixo="' + prefixo + '" data-idx="' + idx + '">' + catOptions + '</select></td>' +
+    '<td style="position:relative">' +
+      '<input type="text" name="' + prefixo + '_produto_nome_' + idx + '" class="form-control form-control-sm inputProdutoNome" placeholder="Digite o nome..." autocomplete="off" data-prefixo="' + prefixo + '" data-idx="' + idx + '">' +
+      '<input type="hidden" name="' + prefixo + '_produto_id_' + idx + '" class="inputProdutoId">' +
+      '<ul class="list-group autocomplete-list shadow" style="display:none;position:absolute;z-index:9999;width:100%;max-height:200px;overflow-y:auto;"></ul>' +
+    '</td>' +
+    '<td><input type="text" name="' + prefixo + '_estoque_' + idx + '" class="form-control form-control-sm inputEstoqueAtual" readonly placeholder="-"></td>' +
+    '<td><input type="number" name="' + prefixo + '_quantidade_' + idx + '" class="form-control form-control-sm" min="0" value="1"></td>' +
+    '<td><button type="button" class="btn btn-outline-danger btn-sm btnRemoverLinha">Remover</button></td>' +
+  '</tr>';
+}
+
+$(document).ready(function() {
+
+  // Abrir modal
+  $('#btnNovoItemFluxo').on('click', function(){
+    $('#modalWizardMov').modal('show');
+    // Limpa tabelas ao abrir
+    $('#wizardTabelaProdutos tbody').empty();
+    $('#wizardTabelaPerdas tbody').empty();
+  });
+
+  // Adicionar produto
+  $('#btnAdicionarProduto').on('click', function() {
+    var idx = $('#wizardTabelaProdutos tbody tr').length;
+    $('#wizardTabelaProdutos tbody').append(criarLinha('prod', idx));
+  });
+
+  // Adicionar perda
+  $('#btnAdicionarPerda').on('click', function() {
+    var idx = $('#wizardTabelaPerdas tbody tr').length;
+    $('#wizardTabelaPerdas tbody').append(criarLinha('perda', idx));
+  });
+
+  // Remover linha
+  $(document).on('click', '.btnRemoverLinha', function() {
+    $(this).closest('tr').remove();
+  });
+
+  // Autocomplete de produto ao digitar
+  $(document).on('input', '.inputProdutoNome', function() {
+    var $input = $(this);
+    var termo = $input.val();
+    var $list = $input.siblings('.autocomplete-list');
+    if (termo.length < 2) { $list.hide().empty(); return; }
+    $.get('/estoque/autocomplete-produto/', {q: termo}, function(resp) {
+      $list.empty();
+      (resp.results || []).forEach(function(p) {
+        $list.append('<li class="list-group-item list-group-item-action py-1 px-2" style="cursor:pointer" data-id="' + p.id + '" data-nome="' + p.nome + '" data-estoque="' + (p.estoque_atual || '') + '">' + p.nome + '</li>');
+      });
+      $list.show();
+    });
+  });
+
+  // Selecionar sugestão
+  $(document).on('click', '.autocomplete-list li', function() {
+    var $li = $(this);
+    var $tr = $li.closest('tr');
+    $li.closest('.autocomplete-list').hide().empty();
+    $tr.find('.inputProdutoNome').val($li.data('nome'));
+    $tr.find('.inputProdutoId').val($li.data('id'));
+    $tr.find('.inputEstoqueAtual').val($li.data('estoque'));
+  });
+
+  // Fechar autocomplete ao clicar fora
+  $(document).on('click', function(e) {
+    if (!$(e.target).hasClass('inputProdutoNome')) {
+      $('.autocomplete-list').hide().empty();
+    }
+  });
+
+  // Submissão do wizard
+  $('#formWizardMov').on('submit', function(e){
+    e.preventDefault();
+    $.post('/estoque/movimentar-wizard/', $(this).serialize(), function(resp){
+      if(resp.status === 'ok') { location.reload(); }
+      else { alert(resp.mensagem || 'Erro ao registrar movimentações.'); }
+    });
+  });
+
+  // Filtros do fluxo
+  $('#filtroTipoMov, #buscaMov, #filtroDataIni, #filtroDataFim').on('input change', function(){
+    var tipo = $('#filtroTipoMov').val().toLowerCase();
+    var busca = $('#buscaMov').val().toLowerCase();
+    var dataIni = $('#filtroDataIni').val();
+    var dataFim = $('#filtroDataFim').val();
+    $('#tabelaFluxoEstoque tbody tr').each(function(){
+      var tds = $(this).find('td');
+      var data = tds.eq(0).text().trim();
+      var produto = tds.eq(1).text().toLowerCase();
+      var categoria = tds.eq(2).text().toLowerCase();
+      var tipoMov = tds.eq(3).text().toLowerCase();
+      var usuario = tds.eq(5).text().toLowerCase();
+      var show = true;
+      if(tipo && tipoMov !== tipo) show = false;
+      if(busca && !(produto.includes(busca) || categoria.includes(busca) || usuario.includes(busca))) show = false;
+      if(dataIni && data < dataIni) show = false;
+      if(dataFim && data > dataFim) show = false;
+      $(this).toggle(show);
+    });
+  });
+
+  // Filtros do estoque
+  $('#filtroSituacao, #buscaItem').on('input change', function(){
+    var sit = $('#filtroSituacao').val();
+    var busca = $('#buscaItem').val().toLowerCase();
+    $('#tabelaEstoque tbody tr').each(function(){
+      var nome = $(this).find('td:nth-child(2)').text().toLowerCase();
+      var codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
+      var situacao = $(this).find('td:nth-child(7) .badge').text().toLowerCase();
+      var show = true;
+      if(sit && ((sit === 'critico' && situacao !== 'crítico') || (sit === 'medio' && situacao !== 'médio') || (sit === 'alto' && situacao !== 'alto'))){
+        show = false;
+      }
+      if(busca && !(nome.includes(busca) || codigo.includes(busca))){
+        show = false;
+      }
+      $(this).toggle(show);
+    });
+  });
+
+  // Desfazer movimentação
+  $(document).on('click', '.desfazer-mov', function(){
+    if(confirm('Deseja realmente desfazer este lançamento?')){
+      var id = $(this).data('id');
+      $.post('/estoque/desfazer-movimentacao/', {id: id, csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()}, function(data){
+        if(data.status === 'ok') { location.reload(); }
+        else { alert(data.mensagem || 'Erro ao desfazer lançamento.'); }
+      });
+    }
+  });
+
+});
+</script>
+{% endblock %}

@@ -1,0 +1,191 @@
+/* Variáveis para consistência do SaaS */
+:root {
+    --primary: #0055ff; /* Um azul mais vibrante e tech */
+    --primary-dark: #0044cc;
+    --dark: #060914; /* Quase preto, mais sofisticado */
+    --text-main: #1a1d24;
+    --text-sub: #64748b;
+    --glass-bg: rgba(255, 255, 255, 0.45);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --error: #ef4444;
+    --anim-speed: 0.4s;
+}
+
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+body.auth-page {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f0f4f8; /* Fundo base leve */
+    overflow: hidden;
+    position: relative;
+}
+
+/* --- Fundo Animado Sutil --- */
+.bg-animation {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0; left: 0;
+    z-index: 1;
+}
+
+/* --- Card Glassmorphism Avançado --- */
+.login-container {
+    z-index: 10;
+    perspective: 1000px;
+}
+
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px; /* Bordas mais arredondadas */
+    box-shadow: 
+        0 4px 6px rgba(0,0,0,0.02),
+        0 20px 40px rgba(0,0,0,0.05),
+        inset 0 0 20px rgba(255,255,255,0.3); /* Brilho interno */
+}
+
+.login-card {
+    width: 90vw;
+    max-width: 420px;
+    padding: 50px 40px;
+}
+
+/* --- Typography --- */
+.logo-header { margin-bottom: 40px; text-align: center; }
+.logo-header h2 { font-weight: 800; font-size: 1.8rem; color: var(--dark); letter-spacing: -1px; }
+.logo-header .dot { color: var(--primary); }
+.logo-header .solutions { font-weight: 400; color: var(--text-sub); }
+.logo-header .subtitle { color: var(--text-sub); font-size: 0.95rem; margin-top: 5px; }
+
+/* --- Floating Labels & Inputs Top --- */
+.input-group {
+    position: relative;
+    margin-bottom: 25px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 15px 10px 10px 0; /* Espaço para o label flutuar */
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #cbd5e1;
+    font-size: 1rem;
+    color: var(--text-main);
+    font-weight: 500;
+    outline: none;
+    transition: all var(--anim-speed) ease;
+}
+
+/* O Segredo do Floating Label com CSS Puro */
+.input-group label {
+    position: absolute;
+    top: 15px; left: 0;
+    color: var(--text-sub);
+    pointer-events: none;
+    transition: all var(--anim-speed) ease;
+    font-weight: 500;
+}
+
+/* Quando focado ou quando tem texto (placeholder não mostrado) */
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+    top: -10px;
+    font-size: 0.8rem;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Barra de Destaque Inferior Animação */
+.input-group .bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 0; height: 2px;
+    background: var(--primary);
+    transition: all var(--anim-speed) ease;
+}
+
+.input-group input:focus ~ .bar {
+    width: 100%;
+}
+
+/* --- Form Actions --- */
+.form-actions { display: flex; justify-content: flex-end; margin-top: -15px; margin-bottom: 25px; }
+.forgot-password { text-decoration: none; color: var(--text-sub); font-size: 0.85rem; transition: 0.3s; }
+.forgot-password:hover { color: var(--primary); }
+
+/* --- Buttons Top --- */
+.btn-primary-top {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 20px rgba(0, 85, 255, 0.25);
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+}
+
+.btn-primary-top:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0, 85, 255, 0.35);
+}
+
+.btn-primary-top .arrow { transition: 0.3s ease; }
+.btn-primary-top:hover .arrow { transform: translateX(5px); }
+
+.btn-secondary-top {
+    background: transparent;
+    color: var(--text-main);
+    border: 2px solid #cbd5e1;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: 0.3s;
+}
+
+.btn-secondary-top:hover {
+    border-color: var(--text-main);
+    background: rgba(0,0,0,0.02);
+}
+
+/* --- Utilities --- */
+.w-100 { width: 100%; }
+
+.alert-error {
+    background: #fee2e2;
+    color: var(--error);
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1px solid #fecaca;
+}
+
+/* --- Animations --- */
+@keyframes popIn {
+    0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+}
+
+.animate-pop-in { animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.animate-fade-in { animation: fadeIn 0.5s ease forwards; }

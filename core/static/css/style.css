@@ -1,0 +1,76 @@
+:root {
+    --primary: #0066ff;
+    --dark: #0f172a;
+    --text: #334155;
+    --light: #f8fafc;
+    --glass: rgba(255, 255, 255, 0.7);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+body { background-color: var(--light); color: var(--text); overflow-x: hidden; }
+
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 8%;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+.logo { font-size: 1.5rem; font-weight: 800; color: var(--dark); }
+.logo span { color: var(--primary); }
+
+.nav-links { list-style: none; display: flex; align-items: center; gap: 30px; }
+.nav-links a { text-decoration: none; color: var(--text); font-weight: 500; transition: 0.3s; }
+.nav-links a:hover { color: var(--primary); }
+
+.btn-login {
+    background: var(--dark);
+    color: white !important;
+    padding: 10px 25px;
+    border-radius: 8px;
+}
+
+/* Hero Section */
+.hero {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 0 8%;
+    background: radial-gradient(circle at top right, #e2e8f0, #f8fafc);
+}
+
+.hero-content { flex: 1; max-width: 600px; }
+.hero-content h1 { font-size: 3.5rem; color: var(--dark); line-height: 1.1; margin-bottom: 20px; }
+.hero-content p { font-size: 1.2rem; margin-bottom: 30px; line-height: 1.6; }
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 15px 35px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 10px 15px -3px rgba(0, 102, 255, 0.3);
+}
+
+/* Glassmorphism Card */
+.hero-dashboard { flex: 1; display: flex; justify-content: center; }
+.glass-card {
+    background: var(--glass);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    padding: 30px;
+    border-radius: 20px;
+    width: 300px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+    transform: perspective(1000px) rotateY(-15deg);
+}

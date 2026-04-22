@@ -1,6 +1,20 @@
+
 from django.db import models
 from datetime import date
 from django.contrib.auth.models import User
+
+# ------------------------
+# FICHA TÉCNICA (BOM)
+# ------------------------
+
+class ProdutoMateriaPrima(models.Model):
+    empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
+    produto_final = models.ForeignKey('Produto', on_delete=models.CASCADE, related_name='materias_primas')
+    materia_prima = models.ForeignKey('Produto', on_delete=models.CASCADE, related_name='usado_em')
+    quantidade = models.DecimalField(max_digits=10, decimal_places=3)
+
+    def __str__(self):
+        return f"{self.produto_final.nome} -> {self.materia_prima.nome} ({self.quantidade})"
 
 # ------------------------
 # EMPRESA
@@ -36,11 +50,32 @@ class UserEmpresa(models.Model):
 # PRODUTOS
 # ------------------------
 class Produto(models.Model):
+    CATEGORIA_CHOICES = [
+        ('produto', 'Produto Final'),
+        ('materia_prima', 'Matéria Prima'),
+        ('embalagem', 'Embalagem'),
+        ('tampa', 'Tampa'),
+        ('rotulo', 'Rótulo'),
+    ]
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
     codigo = models.CharField(max_length=50, blank=True)
     nome = models.CharField(max_length=150)
     descricao = models.TextField(blank=True, null=True)
     preco = models.DecimalField(max_digits=10, decimal_places=2)
+    peso = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    UNIDADE_CHOICES = [
+        ('ml', 'ml'),
+        ('l', 'L'),
+        ('g', 'g'),
+        ('kg', 'kg'),
+        ('pct', 'pct'),
+        ('un', 'un'),
+        ('cx', 'cx'),
+        ('outro', 'Outro'),
+    ]
+    unidade = models.CharField(max_length=20, choices=UNIDADE_CHOICES, default='un')
+    preco_unitario = models.DecimalField(max_digits=10, decimal_places=4, default=0)
+    categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, default='produto')
 
     def __str__(self):
         return f"{self.nome} ({self.empresa.nome})"
@@ -142,4 +177,86 @@ class ItemOrcamento(models.Model):
         nome = self.produto.nome if self.produto else (self.servico.nome if self.servico else "Item")
         return f"{nome} x{self.quantidade}"
 
+
+# ------------------------
+# BANCOS E FLUXO BANCÁRIO
+# ------------------------
+class Banco(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100)
+    agencia = models.CharField(max_length=20, blank=True)
+    conta = models.CharField(max_length=20, blank=True)
+    saldo_inicial = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    def __str__(self):
+        return f"{self.nome} ({self.empresa.nome})"
+
+
+class LancamentoBancario(models.Model):
+    TIPO_CHOICES = [
+        ("entrada", "Entrada"),
+        ("saida", "Saída"),
+    ]
+    CLASSIFICACAO_CHOICES = [
+        ("despesa", "Despesa"),
+        ("investimento", "Investimento"),
+        ("adiantamento_socio", "Adiantamento de Sócio"),
+        ("distribuicao_lucro", "Distribuição de Lucro"),
+        ("outros", "Outros"),
+    ]
+    banco = models.ForeignKey(Banco, on_delete=models.CASCADE, related_name="lancamentos")
+    data = models.DateField()
+    descricao = models.CharField(max_length=255)
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    classificacao = models.CharField(max_length=30, choices=CLASSIFICACAO_CHOICES)
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.data} - {self.descricao} ({self.get_tipo_display()})"
+
+
+# ------------------------
+# ESTOQUE
+# ------------------------
+class ItemEstoque(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    produto = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True)
+    nome = models.CharField(max_length=200)
+    codigo = models.CharField(max_length=50, blank=True)
+    quantidade = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    unidade = models.CharField(max_length=20, default='un')
+    preco_custo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    estoque_minimo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return f"{self.nome} ({self.empresa.nome})"
+
+    @property
+    def abaixo_minimo(self):
+        return self.quantidade < self.estoque_minimo
+
+
+class MovimentacaoEstoque(models.Model):
+    TIPO_CHOICES = [
+        ('entrada', 'Entrada'),
+        ('saida', 'Saída'),
+        ('ajuste', 'Ajuste'),
+    ]
+    item = models.ForeignKey(ItemEstoque, on_delete=models.CASCADE, related_name='movimentacoes')
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    quantidade = models.DecimalField(max_digits=14, decimal_places=2)
+    data = models.DateField()
+    observacao = models.CharField(max_length=255, blank=True)
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.item.nome} ({self.quantidade})"
         

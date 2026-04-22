@@ -1,38 +1,8 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Configurações - {{ empresa.nome }}</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container">
-    <a class="navbar-brand" href="{% url 'core:index' %}"> {{ empresa.nome}}</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto">
-        {% if user.is_authenticated %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'core:dashboard' %}">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'core:listar_orcamentos' %}">Orçamentos</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'core:configuracoes' %}">Configurações</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'core:suporte' %}">Suporte</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'core:logout' %}">Sair</a></li>
-        {% else %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'core:login' %}">Login</a></li>
-        {% endif %}
-      </ul>
-    </div>
-  </div>
-</nav>
+{% extends 'base.html' %}
+{% block content %}
 
 <div class="container mt-4">
-  <h2>Configurações</h2>
+  <h2 class="mb-4">Configurações</h2>
 
   <!-- Nav tabs -->
   <ul class="nav nav-tabs" id="configTabs" role="tablist">
@@ -45,271 +15,702 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="servicos-tab" data-bs-toggle="tab" data-bs-target="#servicos" type="button" role="tab">Serviços</button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="bancos-tab" data-bs-toggle="tab" data-bs-target="#bancos" type="button" role="tab">Bancos</button>
+    </li>
   </ul>
 
   <div class="tab-content mt-3" id="configTabsContent">
-    <!-- Clientes -->
-    <div class="tab-pane fade show active" id="clientes" role="tabpanel">
-      <button class="btn btn-primary mb-3" id="btn-novo-cliente" data-bs-toggle="modal" data-bs-target="#modalCliente">Novo Cliente</button>
-      <table class="table table-striped" id="tabela-clientes">
-          <thead>
-              <tr>
-                  <th>Razão Social</th>
-                  <th>Nome Fantasia</th>
-                  <th>CPF/CNPJ</th>
-                  <th>Telefone</th>
-                  <th>Ações</th>
-              </tr>
-          </thead>
-          <tbody>
-              {% for cliente in clientes_list %}
-              <tr>
-                  <td>{{ cliente.razao_social }}</td>
-                  <td>{{ cliente.nome_fantasia }}</td>
-                  <td>{{ cliente.cpf_cnpj }}</td>
-                  <td>{{ cliente.telefone }}</td>
-                  <td>
-                      <button class="btn btn-sm btn-info btn-editar-cliente" data-id="{{ cliente.id }}" data-bs-toggle="modal" data-bs-target="#modalCliente">Editar</button>
-                      <button class="btn btn-sm btn-danger btn-excluir-cliente" data-id="{{ cliente.id }}">Excluir</button>
-                  </td>
-              </tr>
-              {% endfor %}
-          </tbody>
-      </table>
-    </div>
 
-    <!-- Produtos -->
-    <div class="tab-pane fade" id="produtos" role="tabpanel">
-      <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalProduto">Novo Produto</button>
-      <table class="table table-striped" id="tabela-produtos">
-          <thead>
-              <tr><th>Código</th><th>Nome</th><th>Descrição</th><th>Preço</th><th>Ações</th></tr>
-          </thead>
-          <tbody>
-            {% for produto in produtos_list %}
-            <tr>
-                <td>{{ produto.codigo }}</td>
-                <td>{{ produto.nome }}</td>
-                <td>{{ produto.descricao }}</td>
-                <td>R$ {{ produto.preco }}</td>
-                <td>
-                    <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ produto.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
-                    <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ produto.id }}">Excluir</button>
-                </td>
-            </tr>
-            {% endfor %}
+    <!-- Aba Clientes -->
+    <div class="tab-pane fade show active" id="clientes" role="tabpanel">
+      <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalCliente" id="btn-novo-cliente">Novo Cliente</button>
+      <table class="table table-striped" id="tabela-clientes">
+        <thead>
+          <tr><th>Razão Social</th><th>Nome Fantasia</th><th>CPF/CNPJ</th><th>Telefone</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {% for cliente in clientes_list %}
+          <tr>
+            <td>{{ cliente.razao_social }}</td>
+            <td>{{ cliente.nome_fantasia }}</td>
+            <td>{{ cliente.cpf_cnpj }}</td>
+            <td>{{ cliente.telefone }}</td>
+            <td>
+              <button class="btn btn-sm btn-info btn-editar-cliente" data-id="{{ cliente.id }}" data-bs-toggle="modal" data-bs-target="#modalCliente">Editar</button>
+              <button class="btn btn-sm btn-danger btn-excluir-cliente" data-id="{{ cliente.id }}">Excluir</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center">Nenhum cliente cadastrado.</td></tr>
+          {% endfor %}
         </tbody>
       </table>
     </div>
 
-    <!-- Serviços -->
+    <!-- Aba Produtos (com sub-tabs por categoria) -->
+    <div class="tab-pane fade" id="produtos" role="tabpanel">
+
+      <!-- Sub-tabs de categoria -->
+      <ul class="nav nav-pills mb-3 mt-2" id="produtoSubTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#sub-produto" type="button" data-categoria="produto">Produto Final</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#sub-materia-prima" type="button" data-categoria="materia_prima">Matéria Prima</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#sub-embalagem" type="button" data-categoria="embalagem">Embalagens</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#sub-tampa" type="button" data-categoria="tampa">Tampas</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#sub-rotulo" type="button" data-categoria="rotulo">Rótulos</button></li>
+      </ul>
+
+      <div class="tab-content" id="produtoSubTabsContent">
+
+        <!-- Produto Final -->
+        <div class="tab-pane fade show active" id="sub-produto" role="tabpanel">
+          <button class="btn btn-primary mb-3 btn-novo-produto" data-categoria="produto" data-bs-toggle="modal" data-bs-target="#modalProduto">+ Novo Produto Final</button>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Peso</th>
+                <th>Unidade</th>
+                <th>Preço Unitário</th>
+                <th>Estoque Inicial</th>
+                <th>Categoria</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in produtos_list %}
+              <tr>
+                <td>{{ p.codigo }}</td>
+                <td>{{ p.nome }}</td>
+                <td>{{ p.descricao }}</td>
+                <td>{{ p.peso|floatformat:2 }}</td>
+                <td>{{ p.unidade }}</td>
+                <td>R$ {{ p.preco_unitario|floatformat:2 }}</td>
+                <td>{{ p.estoque_inicial|default_if_none:"0,00" }}</td>
+                <td>{{ p.categoria }}</td>
+                <td>
+                  <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
+                  <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ p.id }}">Excluir</button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="9" class="text-center text-muted">Nenhum produto final.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Matéria Prima -->
+        <div class="tab-pane fade" id="sub-materia-prima" role="tabpanel">
+          <button class="btn btn-primary mb-3 btn-novo-produto" data-categoria="materia_prima" data-bs-toggle="modal" data-bs-target="#modalProduto">+ Nova Matéria Prima</button>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Peso</th>
+                <th>Unidade</th>
+                <th>Preço Unitário</th>
+                <th>Estoque Inicial</th>
+                <th>Categoria</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in materias_primas_list %}
+              <tr>
+                <td>{{ p.codigo }}</td>
+                <td>{{ p.nome }}</td>
+                <td>{{ p.descricao }}</td>
+                <td>{{ p.peso|floatformat:2 }}</td>
+                <td>{{ p.unidade }}</td>
+                <td>R$ {{ p.preco_unitario|floatformat:2 }}</td>
+                <td>{{ p.estoque_inicial|default_if_none:"0,00" }}</td>
+                <td>{{ p.categoria }}</td>
+                <td>
+                  <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
+                  <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ p.id }}">Excluir</button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="9" class="text-center text-muted">Nenhuma matéria prima.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Embalagens -->
+        <div class="tab-pane fade" id="sub-embalagem" role="tabpanel">
+          <button class="btn btn-primary mb-3 btn-novo-produto" data-categoria="embalagem" data-bs-toggle="modal" data-bs-target="#modalProduto">+ Nova Embalagem</button>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Peso</th>
+                <th>Unidade</th>
+                <th>Preço Unitário</th>
+                <th>Estoque Inicial</th>
+                <th>Categoria</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in embalagens_list %}
+              <tr>
+                <td>{{ p.codigo }}</td>
+                <td>{{ p.nome }}</td>
+                <td>{{ p.descricao }}</td>
+                <td>{{ p.peso|floatformat:2 }}</td>
+                <td>{{ p.unidade }}</td>
+                <td>R$ {{ p.preco_unitario|floatformat:2 }}</td>
+                <td>{{ p.estoque_inicial|default_if_none:"0,00" }}</td>
+                <td>{{ p.categoria }}</td>
+                <td>
+                  <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
+                  <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ p.id }}">Excluir</button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="9" class="text-center text-muted">Nenhuma embalagem.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tampas -->
+        <div class="tab-pane fade" id="sub-tampa" role="tabpanel">
+          <button class="btn btn-primary mb-3 btn-novo-produto" data-categoria="tampa" data-bs-toggle="modal" data-bs-target="#modalProduto">+ Nova Tampa</button>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Peso</th>
+                <th>Unidade</th>
+                <th>Preço Unitário</th>
+                <th>Estoque Inicial</th>
+                <th>Categoria</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in tampas_list %}
+              <tr>
+                <td>{{ p.codigo }}</td>
+                <td>{{ p.nome }}</td>
+                <td>{{ p.descricao }}</td>
+                <td>{{ p.peso|floatformat:2 }}</td>
+                <td>{{ p.unidade }}</td>
+                <td>R$ {{ p.preco_unitario|floatformat:2 }}</td>
+                <td>{{ p.estoque_inicial|default_if_none:"0,00" }}</td>
+                <td>{{ p.categoria }}</td>
+                <td>
+                  <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
+                  <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ p.id }}">Excluir</button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="9" class="text-center text-muted">Nenhuma tampa.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Rótulos -->
+        <div class="tab-pane fade" id="sub-rotulo" role="tabpanel">
+          <button class="btn btn-primary mb-3 btn-novo-produto" data-categoria="rotulo" data-bs-toggle="modal" data-bs-target="#modalProduto">+ Novo Rótulo</button>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Peso</th>
+                <th>Unidade</th>
+                <th>Preço Unitário</th>
+                <th>Estoque Inicial</th>
+                <th>Categoria</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in rotulos_list %}
+              <tr>
+                <td>{{ p.codigo }}</td>
+                <td>{{ p.nome }}</td>
+                <td>{{ p.descricao }}</td>
+                <td>{{ p.peso|floatformat:2 }}</td>
+                <td>{{ p.unidade }}</td>
+                <td>R$ {{ p.preco_unitario|floatformat:2 }}</td>
+                <td>{{ p.estoque_inicial|default_if_none:"0,00" }}</td>
+                <td>{{ p.categoria }}</td>
+                <td>
+                  <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
+                  <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ p.id }}">Excluir</button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="9" class="text-center text-muted">Nenhum rótulo.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Aba Serviços -->
     <div class="tab-pane fade" id="servicos" role="tabpanel">
       <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalServico">Novo Serviço</button>
       <table class="table table-striped" id="tabela-servicos">
-          <thead>
-              <tr><th>Código</th><th>Nome</th><th>Descrição</th><th>Preço</th><th>Ações</th></tr>
-          </thead>
-          <tbody>
-              {% for servico in servicos_list %}
-              <tr>
-                  <td>{{ servico.codigo }}</td>
-                  <td>{{ servico.nome }}</td>
-                  <td>{{ servico.descricao }}</td>
-                  <td>R$ {{ servico.preco }}</td>
-                  <td>
-                      <button class="btn btn-sm btn-info btn-editar-servico" data-id="{{ servico.id }}" data-bs-toggle="modal" data-bs-target="#modalServico">Editar</button>
-                      <button class="btn btn-sm btn-danger btn-excluir-servico" data-id="{{ servico.id }}">Excluir</button>
-                  </td>
-              </tr>
-              {% endfor %}
-          </tbody>
+        <thead>
+          <tr><th>Código</th><th>Nome</th><th>Descrição</th><th>Preço</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {% for servico in servicos_list %}
+          <tr>
+            <td>{{ servico.codigo }}</td>
+            <td>{{ servico.nome }}</td>
+            <td>{{ servico.descricao }}</td>
+            <td>R$ {{ servico.preco }}</td>
+            <td>
+              <button class="btn btn-sm btn-info btn-editar-servico" data-id="{{ servico.id }}" data-bs-toggle="modal" data-bs-target="#modalServico">Editar</button>
+              <button class="btn btn-sm btn-danger btn-excluir-servico" data-id="{{ servico.id }}">Excluir</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center">Nenhum serviço cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
       </table>
     </div>
-  </div>
-</div>
+
+    <!-- Aba Bancos -->
+    <div class="tab-pane fade" id="bancos" role="tabpanel">
+      <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalBanco">Novo Banco</button>
+      <table class="table table-striped" id="tabela-bancos">
+        <thead>
+          <tr><th>Nome</th><th>Agência</th><th>Conta</th><th>Saldo Inicial</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {% for banco in bancos_list %}
+          <tr>
+            <td>{{ banco.nome }}</td>
+            <td>{{ banco.agencia }}</td>
+            <td>{{ banco.conta }}</td>
+            <td>R$ {{ banco.saldo_inicial }}</td>
+            <td>
+              <button class="btn btn-sm btn-info btn-editar-banco"
+                data-id="{{ banco.id }}"
+                data-nome="{{ banco.nome }}"
+                data-agencia="{{ banco.agencia }}"
+                data-conta="{{ banco.conta }}"
+                data-saldo_inicial="{{ banco.saldo_inicial }}"
+                data-bs-toggle="modal" data-bs-target="#modalBanco">Editar</button>
+              <button class="btn btn-sm btn-danger btn-excluir-banco" data-id="{{ banco.id }}">Excluir</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center">Nenhum banco cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- fim tab-content -->
+</div><!-- fim container -->
 
 <!-- Modal Cliente -->
 <div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <form id="formCliente">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Novo Cliente</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="cliente-id" name="id">
-                {% csrf_token %}
-                <div class="mb-2"><label>Razão Social</label><input type="text" name="razao_social" class="form-control" required></div>
-                <div class="mb-2"><label>Nome Fantasia</label><input type="text" name="nome_fantasia" class="form-control"></div>
-                <div class="mb-2"><label>CPF/CNPJ</label><input type="text" name="cpf_cnpj" class="form-control"></div>
-                <div class="mb-2"><label>Telefone</label><input type="text" name="telefone" class="form-control"></div>
-                <div class="mb-2"><label>Email</label><input type="email" name="email" class="form-control"></div>
-                <div class="mb-2"><label>Endereço</label><input type="text" name="endereco" class="form-control"></div>
-                <div class="mb-2"><label>Cidade/UF</label><input type="text" name="cidade_uf" class="form-control"></div>
-                <div class="mb-2"><label>CEP</label><input type="text" name="cep" class="form-control"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-success">Salvar</button>
-            </div>
+    <div class="modal-content">
+      <form id="formCliente">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Cliente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-    </form>
+        <div class="modal-body">
+          <input type="hidden" id="cliente-id" name="id">
+          <div class="mb-2"><label>Razão Social</label><input type="text" name="razao_social" class="form-control"></div>
+          <div class="mb-2"><label>Nome Fantasia</label><input type="text" name="nome_fantasia" class="form-control"></div>
+          <div class="mb-2"><label>CPF/CNPJ</label><input type="text" name="cpf_cnpj" class="form-control"></div>
+          <div class="mb-2"><label>Email</label><input type="email" name="email" class="form-control"></div>
+          <div class="mb-2"><label>Telefone</label><input type="text" name="telefone" class="form-control"></div>
+          <div class="mb-2"><label>Endereço</label><input type="text" name="endereco" class="form-control"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <!-- Modal Produto -->
 <div class="modal fade" id="modalProduto" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form id="formProduto">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Novo Produto</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="produto-id" name="id">
-                {% csrf_token %}
-                <div class="mb-2"><label>Código</label><input type="text" name="codigo" class="form-control"></div>
-                <div class="mb-2"><label>Nome</label><input type="text" name="nome" class="form-control"></div>
-                <div class="mb-2"><label>Descrição</label><input type="text" name="descricao" class="form-control"></div>
-                <div class="mb-2"><label>Preço</label><input type="number" step="0.01" name="preco" class="form-control"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-success">Salvar</button>
-            </div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="formProduto">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Produto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-    </form>
+        <div class="modal-body">
+          <input type="hidden" id="produto-id" name="id">
+          <input type="hidden" id="produto-categoria" name="categoria" value="produto">
+          <div class="mb-2"><label>Código</label><input type="text" name="codigo" class="form-control"></div>
+          <div class="mb-2"><label>Nome</label><input type="text" name="nome" class="form-control"></div>
+          <div class="mb-2"><label>Descrição</label><input type="text" name="descricao" class="form-control"></div>
+          <div class="row g-2 mb-2">
+            <div class="col-6"><label>Peso</label><input type="text" name="peso" id="produto-peso" class="form-control"></div>
+            <div class="col-6"><label>Unidade</label>
+              <select name="unidade" id="produto-unidade" class="form-control">
+                <option value="ml">ml</option>
+                <option value="L">L</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="pct">pct</option>
+                <option value="un">un</option>
+                <option value="cx">cx</option>
+                <option value="outro">outro</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-2"><label>Preço Unitário</label><input type="text" name="preco_unitario" id="produto-preco-unitario" class="form-control"></div>
+          <div class="mb-2"><label>Estoque Inicial</label><input type="text" name="estoque_inicial" id="produto-estoque-inicial" class="form-control"></div>
+
+          <!-- Ficha Técnica de Matéria-Prima (só para Produto Final) -->
+          <div id="secaoFichaTecnica" style="display:none">
+            <hr>
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <label class="form-label fw-semibold mb-0">Ficha Técnica de Matéria-Prima</label>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAdicionarMPFicha">+ Adicionar Matéria-Prima</button>
+            </div>
+            <table class="table table-sm table-bordered" id="tabelaMPFicha">
+              <thead class="table-secondary">
+                <tr>
+                  <th>Matéria-Prima</th>
+                  <th style="width:160px">Qtd por unidade do produto</th>
+                  <th style="width:50px"></th>
+                </tr>
+              </thead>
+              <tbody id="tabelaMPFichaBody"></tbody>
+            </table>
+            <small class="text-muted">A baixa no estoque de matéria-prima será feita automaticamente ao registrar uma saída deste produto.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 <!-- Modal Serviço -->
 <div class="modal fade" id="modalServico" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <form id="formServico">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Novo Serviço</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="servico-id" name="id">
-                {% csrf_token %}
-                <div class="mb-2"><label>Código</label><input type="text" name="codigo" class="form-control"></div>
-                <div class="mb-2"><label>Nome</label><input type="text" name="nome" class="form-control"></div>
-                <div class="mb-2"><label>Descrição</label><input type="text" name="descricao" class="form-control"></div>
-                <div class="mb-2"><label>Preço</label><input type="number" step="0.01" name="preco" class="form-control"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-success">Salvar</button>
-            </div>
+    <div class="modal-content">
+      <form id="formServico">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Serviço</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-    </form>
+        <div class="modal-body">
+          <input type="hidden" id="servico-id" name="id">
+          <div class="mb-2"><label>Código</label><input type="text" name="codigo" class="form-control"></div>
+          <div class="mb-2"><label>Nome</label><input type="text" name="nome" class="form-control"></div>
+          <div class="mb-2"><label>Descrição</label><input type="text" name="descricao" class="form-control"></div>
+          <div class="mb-2"><label>Preço</label><input type="number" step="0.01" name="preco" class="form-control"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
-<footer class="bg-dark text-white text-center py-3 mt-5 fixed-bottom">
-  © 2025 {{ empresa.nome }} - Todos os direitos reservados.
-</footer>
+<!-- Modal Banco -->
+<div class="modal fade" id="modalBanco" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formBanco">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Banco</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="banco-id" name="id">
+          <div class="mb-2"><label>Nome</label><input type="text" name="nome" id="banco-nome" class="form-control" required></div>
+          <div class="mb-2"><label>Agência</label><input type="text" name="agencia" id="banco-agencia" class="form-control"></div>
+          <div class="mb-2"><label>Conta</label><input type="text" name="conta" id="banco-conta" class="form-control"></div>
+          <div class="mb-2"><label>Saldo Inicial</label><input type="number" step="0.01" name="saldo_inicial" id="banco-saldo_inicial" class="form-control" required></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+{% endblock %}
 
+{% block scripts %}
 <script>
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
-            cookie = cookie.trim();
-            if (cookie.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-const csrftoken = getCookie('csrftoken');
-
-// ======================= AJAX e Modals ========================
 $(document).ready(function(){
+  const csrftoken = $('[name=csrfmiddlewaretoken]').first().val();
 
-    // Abrir modal novo cliente
-    $('#btn-novo-cliente').click(function(){
-        $('#formCliente')[0].reset();
-        $('#cliente-id').val('');
-        $('.modal-title').text('Novo Cliente');
+  // ---- CLIENTES ----
+  $('#btn-novo-cliente').click(function(){
+    $('#formCliente')[0].reset();
+    $('#cliente-id').val('');
+    $('#modalCliente .modal-title').text('Novo Cliente');
+  });
+
+  $(document).on('click', '.btn-editar-cliente', function(){
+    var id = $(this).data('id');
+    $.get('/clientes/' + id + '/editar/', function(data){
+      $('#formCliente')[0].reset();
+      $('#cliente-id').val(id);
+      $('[name=razao_social]').val(data.razao_social);
+      $('[name=nome_fantasia]').val(data.nome_fantasia);
+      $('[name=cpf_cnpj]').val(data.cpf_cnpj);
+      $('[name=email]').val(data.email);
+      $('[name=telefone]').val(data.telefone);
+      $('[name=endereco]').val(data.endereco);
+      $('#modalCliente .modal-title').text('Editar Cliente');
     });
+  });
 
-    // Função genérica: abrir modal de edição
-    function abrirModalEdicao(tipo, id) {
-        const modalId = tipo === 'clientes' ? '#modalCliente' :
-                        tipo === 'produtos' ? '#modalProduto' : '#modalServico';
-        $.ajax({
-            url: `/${tipo}/${id}/editar/`,
-            type: 'GET',
-            success: function(data){
-                const form = $(modalId + ' form')[0];
-                form.reset();
-                for (let key in data) {
-                    $(modalId + ` [name="${key}"]`).val(data[key]);
-                }
-                $('.modal-title').text('Editar ' + tipo.slice(0,-1));
-                bootstrap.Modal.getOrCreateInstance(document.getElementById(modalId.slice(1))).show();
-            },
-            error: function(xhr){
-                alert(`Erro ao carregar ${tipo.slice(0,-1)}: ${xhr.responseText}`);
-            }
-        });
+  $('#formCliente').submit(function(e){
+    e.preventDefault();
+    var id = $('#cliente-id').val();
+    var url = id ? '/clientes/' + id + '/editar/' : '/clientes/criar/';
+    $.post(url, $(this).serialize(), function(data){
+      if(data.status === 'ok'){ location.reload(); }
+      else { alert(data.mensagem || 'Erro ao salvar cliente.'); }
+    });
+  });
+
+  $(document).on('click', '.btn-excluir-cliente', function(){
+    if(!confirm('Excluir este cliente?')) return;
+    var id = $(this).data('id');
+    var linha = $(this).closest('tr');
+    $.post('/clientes/' + id + '/excluir/', {csrfmiddlewaretoken: csrftoken}, function(data){
+      if(data.status === 'ok') linha.fadeOut();
+      else alert(data.mensagem || 'Erro ao excluir.');
+    });
+  });
+
+  // ---- PRODUTOS ----
+  // Botão "Novo" em cada sub-tab
+  $(document).on('click', '.btn-novo-produto', function(){
+    $('#formProduto')[0].reset();
+    $('#produto-id').val('');
+    $('#tabelaMPFichaBody').empty();
+    var categoria = $(this).data('categoria');
+    $('#produto-categoria').val(categoria);
+    var labels = {produto:'Produto Final', materia_prima:'Matéria Prima', embalagem:'Embalagem', tampa:'Tampa', rotulo:'Rótulo'};
+    $('#modalProduto .modal-title').text('Novo ' + (labels[categoria] || 'Produto'));
+    if (categoria === 'produto') {
+      $('#secaoFichaTecnica').show();
+    } else {
+      $('#secaoFichaTecnica').hide();
     }
+  });
 
-    $(document).on('click', '.btn-editar-cliente', function(){ abrirModalEdicao('clientes', $(this).data('id')); });
-    $(document).on('click', '.btn-editar-produto', function(){ abrirModalEdicao('produtos', $(this).data('id')); });
-    $(document).on('click', '.btn-editar-servico', function(){ abrirModalEdicao('servicos', $(this).data('id')); });
-
-    // Função genérica: excluir
-    $(document).on('click', '.btn-excluir-cliente, .btn-excluir-produto, .btn-excluir-servico', function(){
-        const id = $(this).data('id');
-        const linha = $(this).closest('tr');
-        const tipo = $(this).hasClass('btn-excluir-cliente') ? 'clientes' :
-                     $(this).hasClass('btn-excluir-produto') ? 'produtos' : 'servicos';
-
-        if(confirm(`Deseja realmente excluir este ${tipo.slice(0,-1)}?`)){
-            $.ajax({
-                url: `/${tipo}/${id}/excluir/`,
-                type: 'POST',
-                headers: {'X-CSRFToken': csrftoken},
-                success: function(resp){
-                    if(resp.status === 'ok') linha.fadeOut();
-                    else alert(resp.mensagem);
-                },
-                error: function(xhr){ alert(`Erro ao excluir ${tipo.slice(0,-1)}: ${xhr.responseText}`); }
-            });
-        }
+  $(document).on('click', '.btn-editar-produto', function(){
+    var id = $(this).data('id');
+    $.get('/produtos/' + id + '/editar/', function(data){
+      $('#formProduto')[0].reset();
+      $('#tabelaMPFichaBody').empty();
+      $('#produto-id').val(id);
+      $('#produto-categoria').val(data.categoria);
+      $('#formProduto [name=codigo]').val(data.codigo);
+      $('#formProduto [name=nome]').val(data.nome);
+      $('#formProduto [name=descricao]').val(data.descricao);
+      $('#produto-peso').val(data.peso);
+      $('#produto-unidade').val(data.unidade);
+      $('#produto-preco-unitario').val(data.preco_unitario);
+      $('#produto-estoque-inicial').val(data.estoque_inicial);
+      var labels = {produto:'Produto Final', materia_prima:'Matéria Prima', embalagem:'Embalagem', tampa:'Tampa', rotulo:'Rótulo'};
+      $('#modalProduto .modal-title').text('Editar ' + (labels[data.categoria] || 'Produto'));
+      if (data.categoria === 'produto') {
+        $('#secaoFichaTecnica').show();
+        // Preencher linhas de MP existentes
+        (data.materias_primas || []).forEach(function(mp, i) {
+          $('#tabelaMPFichaBody').append(criarLinhaMPFicha(i, mp.id, mp.nome, mp.quantidade));
+        });
+      } else {
+        $('#secaoFichaTecnica').hide();
+      }
     });
+  });
 
-    // Função genérica: salvar novo/editar
-    $('#formCliente, #formProduto, #formServico').submit(function(e){
-        e.preventDefault();
-        const form = this;
-        const tipo = $(form).attr('id') === 'formCliente' ? 'clientes' :
-                     $(form).attr('id') === 'formProduto' ? 'produtos' : 'servicos';
-        const id = $(form).find('input[name="id"]').val();
-        const url = id ? `/${tipo}/${id}/editar/` : `/${tipo}/criar/`;
-        const formData = new FormData(form);
+  // Criar linha de matéria-prima na ficha técnica
+  function criarLinhaMPFicha(idx, mpId, mpNome, mpQtd) {
+    return '<tr>' +
+      '<td style="position:relative">' +
+        '<input type="text" class="form-control form-control-sm inputMPFichaNome" autocomplete="off" placeholder="Digite a matéria-prima..." value="' + (mpNome || '') + '">' +
+        '<input type="hidden" name="mp_produto_id_' + idx + '" class="inputMPFichaId" value="' + (mpId || '') + '">' +
+        '<ul class="list-group mp-ficha-autocomplete-list shadow" style="display:none;position:absolute;z-index:9999;width:100%;max-height:150px;overflow-y:auto;"></ul>' +
+      '</td>' +
+      '<td><input type="number" name="mp_quantidade_' + idx + '" class="form-control form-control-sm" min="0" step="0.001" value="' + (mpQtd || 1) + '"></td>' +
+      '<td><button type="button" class="btn btn-outline-danger btn-sm btnRemoverMPFicha">X</button></td>' +
+    '</tr>';
+  }
 
-        fetch(url, {
-            method: 'POST',
-            headers: {'X-CSRFToken': csrftoken},
-            body: formData
-        }).then(res => res.json())
-        .then(data => {
-            if(data.status === 'ok'){
-                location.reload(); // atualiza a tabela
-            } else { alert(data.mensagem || 'Erro ao salvar'); }
-        }).catch(err => console.log(err));
+  // Adicionar linha
+  $('#btnAdicionarMPFicha').on('click', function() {
+    var idx = $('#tabelaMPFichaBody tr').length;
+    $('#tabelaMPFichaBody').append(criarLinhaMPFicha(idx, '', '', 1));
+  });
+
+  // Remover linha
+  $(document).on('click', '.btnRemoverMPFicha', function() {
+    $(this).closest('tr').remove();
+    // Renumerar índices dos campos
+    $('#tabelaMPFichaBody tr').each(function(i) {
+      $(this).find('.inputMPFichaId').attr('name', 'mp_produto_id_' + i);
+      $(this).find('input[type=number]').attr('name', 'mp_quantidade_' + i);
     });
+  });
+
+  // Autocomplete de matéria-prima na ficha técnica
+  $(document).on('input', '.inputMPFichaNome', function() {
+    var $input = $(this);
+    var termo = $input.val();
+    var $list = $input.siblings('.mp-ficha-autocomplete-list');
+    if (termo.length < 2) { $list.hide().empty(); return; }
+    $.get('/estoque/autocomplete-produto/', {q: termo, categoria: 'materia_prima'}, function(resp) {
+      $list.empty();
+      (resp.results || []).forEach(function(p) {
+        $list.append('<li class="list-group-item list-group-item-action py-1 px-2" style="cursor:pointer" data-id="' + p.id + '" data-nome="' + p.nome + '">' + p.nome + '</li>');
+      });
+      $list.show();
+    });
+  });
+
+  $(document).on('click', '.mp-ficha-autocomplete-list li', function() {
+    var $li = $(this);
+    var $tr = $li.closest('tr');
+    $li.closest('.mp-ficha-autocomplete-list').hide().empty();
+    $tr.find('.inputMPFichaNome').val($li.data('nome'));
+    $tr.find('.inputMPFichaId').val($li.data('id'));
+  });
+
+  $(document).on('click', function(e) {
+    if (!$(e.target).hasClass('inputMPFichaNome')) {
+      $('.mp-ficha-autocomplete-list').hide().empty();
+    }
+  });
+
+  $('#formProduto').submit(function(e){
+    e.preventDefault();
+    var id = $('#produto-id').val();
+    var url = id ? '/produtos/' + id + '/editar/' : '/produtos/criar/';
+    $.post(url, $(this).serialize(), function(data){
+      if(data.status === 'ok'){ location.reload(); }
+      else { alert(data.mensagem || 'Erro ao salvar produto.'); }
+    });
+  });
+
+  $(document).on('click', '.btn-excluir-produto', function(){
+    if(!confirm('Excluir este produto?')) return;
+    var id = $(this).data('id');
+    var linha = $(this).closest('tr');
+    $.post('/produtos/' + id + '/excluir/', {csrfmiddlewaretoken: csrftoken}, function(data){
+      if(data.status === 'ok') linha.fadeOut();
+      else alert(data.mensagem || 'Erro ao excluir.');
+    });
+  });
+
+  // ---- SERVIÇOS ----
+  $(document).on('click', '.btn-editar-servico', function(){
+    var id = $(this).data('id');
+    $.get('/servicos/' + id + '/editar/', function(data){
+      $('#formServico')[0].reset();
+      $('#servico-id').val(data.id);
+      $('#formServico [name=codigo]').val(data.codigo);
+      $('#formServico [name=nome]').val(data.nome);
+      $('#formServico [name=descricao]').val(data.descricao);
+      $('#formServico [name=preco]').val(data.preco);
+      $('#modalServico .modal-title').text('Editar Serviço');
+    });
+  });
+
+  $('#formServico').submit(function(e){
+    e.preventDefault();
+    var id = $('#servico-id').val();
+    var url = id ? '/servicos/' + id + '/editar/' : '/servicos/criar/';
+    $.post(url, $(this).serialize(), function(data){
+      if(data.status === 'ok'){ location.reload(); }
+      else { alert(data.mensagem || 'Erro ao salvar serviço.'); }
+    });
+  });
+
+  $(document).on('click', '.btn-excluir-servico', function(){
+    if(!confirm('Excluir este serviço?')) return;
+    var id = $(this).data('id');
+    var linha = $(this).closest('tr');
+    $.post('/servicos/' + id + '/excluir/', {csrfmiddlewaretoken: csrftoken}, function(data){
+      if(data.status === 'ok') linha.fadeOut();
+      else alert(data.mensagem || 'Erro ao excluir.');
+    });
+  });
+
+  // ---- BANCOS ----
+  $(document).on('click', '.btn-editar-banco', function(){
+    $('#banco-id').val($(this).data('id'));
+    $('#banco-nome').val($(this).data('nome'));
+    $('#banco-agencia').val($(this).data('agencia'));
+    $('#banco-conta').val($(this).data('conta'));
+    $('#banco-saldo_inicial').val($(this).data('saldo_inicial'));
+    $('#modalBanco .modal-title').text('Editar Banco');
+  });
+
+  $('[data-bs-target="#modalBanco"]').not('.btn-editar-banco').click(function(){
+    $('#formBanco')[0].reset();
+    $('#banco-id').val('');
+    $('#modalBanco .modal-title').text('Novo Banco');
+  });
+
+  $('#formBanco').submit(function(e){
+    e.preventDefault();
+    var id = $('#banco-id').val();
+    var url = id ? '/bancos/' + id + '/editar/' : '/bancos/criar/';
+    $.post(url, $(this).serialize(), function(data){
+      if(data.status === 'ok'){ location.reload(); }
+      else { alert(data.mensagem || 'Erro ao salvar banco.'); }
+    });
+  });
+
+  $(document).on('click', '.btn-excluir-banco', function(){
+    if(!confirm('Excluir este banco?')) return;
+    var id = $(this).data('id');
+    var linha = $(this).closest('tr');
+    $.post('/bancos/' + id + '/excluir/', {csrfmiddlewaretoken: csrftoken}, function(data){
+      if(data.status === 'ok') linha.fadeOut();
+      else alert(data.mensagem || 'Erro ao excluir.');
+    });
+  });
+
 });
 </script>
-</body>
-</html>
+{% endblock %}

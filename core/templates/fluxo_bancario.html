@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4">Fluxo Bancário</h2>
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+            <div class="card glass-card border-0 shadow-lg p-4 animate-in">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold text-dark">Fluxxo<span class="text-primary">.</span><span class="fw-light text-secondary">Solutions</span></h2>
+                        <p class="text-muted small">Gestão Financeira Inteligente</p>
+                    </div>
+                    <form method="get" class="mb-4">
+                        <div class="form-floating mb-3">
+                            <select name="banco" id="banco" class="form-select custom-input" onchange="this.form.submit()" required>
+                                <option value="">Selecione o banco</option>
+                                {% for banco in bancos %}
+                                    <option value="{{ banco.id }}" {% if banco_selecionado and banco.id == banco_selecionado.id %}selected{% endif %}>{{ banco.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <label for="banco">Banco</label>
+                        </div>
+                    </form>
+                    {% if banco_selecionado %}
+                        <div class="mb-3">
+                            <h4 class="fw-bold mb-1">Banco: {{ banco_selecionado.nome }}</h4>
+                            <p class="mb-2"><b>Saldo Atual:</b> <span class="text-success">R$ {{ saldo_atual|floatformat:2 }}</span></p>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <a href="{% url 'core:novo_lancamento_bancario' %}?banco={{ banco_selecionado.id }}" class="btn btn-primary">Novo Lançamento</a>
+                                <a href="{% url 'core:importar_lancamentos_excel' %}" class="btn btn-secondary">Importar Excel</a>
+                               
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Descrição</th>
+                                        <th>Tipo</th>
+                                        <th>Classificação</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for l in lancamentos %}
+                                        <tr>
+                                            <td>{{ l.data }}</td>
+                                            <td>{{ l.descricao }}</td>
+                                            <td>{{ l.get_tipo_display }}</td>
+                                            <td>{{ l.get_classificacao_display }}</td>
+                                            <td>{% if l.tipo == 'entrada' %}<span class="text-success fw-bold">+ R$ {{ l.valor|floatformat:2 }}</span>{% else %}<span class="text-danger fw-bold">- R$ {{ l.valor|floatformat:2 }}</span>{% endif %}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="5" class="text-center text-muted">Nenhum lançamento encontrado.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="text-center mt-4 text-muted small opacity-50">
+                © 2026 Fluxxo Solutions - Segurança Bancária
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
