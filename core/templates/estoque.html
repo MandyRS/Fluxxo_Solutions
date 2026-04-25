@@ -16,6 +16,7 @@
 
     <!-- Aba Estoque -->
     <div class="tab-pane fade show active" id="estoque-lista" role="tabpanel">
+      <div class="mb-2" id="filtroSubcatPills"></div>
       <div class="row mb-2">
         <div class="col-md-4 d-flex align-items-center">
           <h5 class="mb-0 me-3">Produtos em Estoque</h5>
@@ -37,7 +38,7 @@
             <th>Nome</th>
             <th>Peso</th>
             <th>Unidade</th>
-            <th>Categoria</th>
+            <th>Subcategoria</th>
             <th>Estoque Atual</th>
             <th>Situação</th>
             <th>Ações</th>
@@ -45,12 +46,12 @@
         </thead>
         <tbody>
           {% for item in itens %}
-          <tr>
+          <tr data-subcategoria="{% if item.produto %}{{ item.produto.subcategoria|default:'' }}{% endif %}">
             <td>{{ item.codigo|default:"-" }}</td>
             <td>{{ item.nome }}</td>
             <td>{% if item.produto %}{{ item.produto.peso|floatformat:'2g' }}{% else %}-{% endif %}</td>
             <td>{% if item.produto %}{{ item.produto.unidade }}{% else %}{{ item.unidade }}{% endif %}</td>
-            <td>{% if item.produto %}{{ item.produto.get_categoria_display }}{% else %}-{% endif %}</td>
+            <td>{% if item.produto %}{{ item.produto.subcategoria|default:"-" }}{% else %}-{% endif %}</td>
             <td>{{ item.quantidade|floatformat:2 }}</td>
             <td>
               {% if item.quantidade <= 10 %}
@@ -66,7 +67,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="8" class="text-center">Nenhum item no estoque.</td></tr>
+          <tr data-subcategoria=""><td colspan="8" class="text-center">Nenhum item no estoque.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -162,7 +163,7 @@
             <table class="table table-bordered align-middle" id="wizardTabelaProdutos">
               <thead class="table-light">
                 <tr>
-                  <th>Categoria</th>
+                  <th>Subcategoria</th>
                   <th>Produto</th>
                   <th>Estoque Atual</th>
                   <th>Quantidade</th>
@@ -182,7 +183,7 @@
             <table class="table table-bordered align-middle" id="wizardTabelaPerdas">
               <thead class="table-light">
                 <tr>
-                  <th>Categoria</th>
+                  <th>Subcategoria</th>
                   <th>Produto</th>
                   <th>Estoque Atual</th>
                   <th>Quantidade Perdida</th>
@@ -192,6 +193,16 @@
               <tbody></tbody>
             </table>
           </div>
+          <!-- movimentação em massa -->
+          <div class="mb-1 d-flex align-items-center justify-content-between">
+            <label class="form-label fw-semibold mb-0">Movimentação em Massa por Categoria</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnMostrarMovimentoMassa">+ Movimentação em Massa</button>
+          </div>
+          <div id="containerMovimentoMassa" style="display:none;">
+            <div class="mb-2" id="botoesCategoriasMassa"></div>
+            <div id="tabelasCategoriasMassa"></div>
+          </div>
+
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -206,17 +217,35 @@
 
 {% block scripts %}
 <script>
-// Opções de categoria reutilizáveis
-var catOptions = '<option value="produto">Produto Final</option>' +
-  '<option value="materia_prima">Matéria Prima</option>' +
-  '<option value="embalagem">Embalagem</option>' +
-  '<option value="tampa">Tampa</option>' +
-  '<option value="rotulo">Rótulo</option>';
+var categoriasJson = {{ categorias_json|safe }};
+var filtroSubcatAtivo = null;
 
-// Cria uma linha padrão para produto ou perda
+// ==========================================
+// WIZARD: Criar linha com select de subcategoria
+// ==========================================
+function criarSelectSubcat(prefixo, idx) {
+  var html = '<select name="' + prefixo + '_subcategoria_id_' + idx + '" class="form-select form-select-sm selectSubcategoria">';
+  html += '<option value="">Subcategoria...</option>';
+  if (categoriasJson && categoriasJson.length > 0) {
+    categoriasJson.forEach(function(cat) {
+      if (cat.subcategorias.length > 0) {
+        html += '<optgroup label="' + cat.nome + '">';
+        cat.subcategorias.forEach(function(sub) {
+          html += '<option value="' + sub.id + '">' + sub.nome + '</option>';
+        });
+        html += '</optgroup>';
+      }
+    });
+  } else {
+    html += '<option disabled>Cadastre categorias em Configurações</option>';
+  }
+  html += '</select>';
+  return html;
+}
+
 function criarLinha(prefixo, idx) {
   return '<tr>' +
-    '<td><select name="' + prefixo + '_categoria_' + idx + '" class="form-select form-select-sm selectCategoria" data-prefixo="' + prefixo + '" data-idx="' + idx + '">' + catOptions + '</select></td>' +
+    '<td>' + criarSelectSubcat(prefixo, idx) + '</td>' +
     '<td style="position:relative">' +
       '<input type="text" name="' + prefixo + '_produto_nome_' + idx + '" class="form-control form-control-sm inputProdutoNome" placeholder="Digite o nome..." autocomplete="off" data-prefixo="' + prefixo + '" data-idx="' + idx + '">' +
       '<input type="hidden" name="' + prefixo + '_produto_id_' + idx + '" class="inputProdutoId">' +
@@ -228,12 +257,168 @@ function criarLinha(prefixo, idx) {
   '</tr>';
 }
 
+// ==========================================
+// MOVIMENTAÇÃO EM MASSA (CategoriaProduto → SubcategoriaProduto)
+// ==========================================
+function montarCategoriasMovimentoMassa() {
+  var $botoes = $('#botoesCategoriasMassa');
+  var $tabelas = $('#tabelasCategoriasMassa');
+  $botoes.empty();
+  $tabelas.empty();
+  if (!categoriasJson || categoriasJson.length === 0) {
+    $botoes.html('<span class="text-muted small">Nenhuma categoria cadastrada. Vá em Configurações para criar categorias.</span>');
+    return;
+  }
+  categoriasJson.forEach(function(cat) {
+    var btn = $('<button type="button" class="btn btn-outline-secondary btn-sm me-2 mb-2 btnCategoriaMassa" data-cat-id="' + cat.id + '">' + cat.nome + '</button>');
+    $botoes.append(btn);
+    var subcatBtns = '';
+    cat.subcategorias.forEach(function(sub) {
+      subcatBtns += '<button type="button" class="btn btn-outline-primary btn-sm me-2 mb-1 btnSubcatMassa" ' +
+        'data-subcat-id="' + sub.id + '" data-subcat-nome="' + sub.nome + '" data-cat-id="' + cat.id + '">' +
+        sub.nome + '</button>';
+    });
+    if (!subcatBtns) {
+      subcatBtns = '<span class="text-muted small">Nenhuma subcategoria cadastrada nesta categoria.</span>';
+    }
+    $tabelas.append(
+      '<div class="tabela-categoria-massa" id="tabela_cat_' + cat.id + '" style="display:none;">' +
+      '<div class="ms-2 mb-2 mt-1">' + subcatBtns + '</div>' +
+      '<div id="tabelaSubcatsMassa_' + cat.id + '"></div>' +
+      '</div>'
+    );
+  });
+}
+
+$(document).on('click', '.btnCategoriaMassa', function() {
+  var catId = $(this).data('cat-id');
+  var $div = $('#tabela_cat_' + catId);
+  if ($div.is(':visible')) {
+    $div.hide();
+    $(this).removeClass('btn-secondary').addClass('btn-outline-secondary');
+    return;
+  }
+  $('.tabela-categoria-massa').hide();
+  $('.btnCategoriaMassa').removeClass('btn-secondary').addClass('btn-outline-secondary');
+  $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
+  $div.show();
+});
+
+$(document).on('click', '.btnSubcatMassa', function() {
+  var subcatId = $(this).data('subcat-id');
+  var subcatNome = $(this).data('subcat-nome');
+  var catId = $(this).data('cat-id');
+  var $container = $('#tabelaSubcatsMassa_' + catId);
+  var $existing = $container.find('[data-subcat-loaded="' + subcatId + '"]');
+  if ($existing.length) {
+    $existing.toggle();
+    return;
+  }
+  $.get('/estoque/listar-produtos-subcategoria/', {subcategoria_id: subcatId}, function(resp) {
+    var produtos = resp.produtos || [];
+    var html = '<div class="mb-3" data-subcat-loaded="' + subcatId + '">';
+    html += '<div class="d-flex align-items-center flex-wrap mb-1 mt-2">';
+    html += '<b class="me-2">' + subcatNome + '</b>';
+    html += '<button type="button" class="btn btn-sm btn-outline-secondary me-1 btnSelecionarTodosSubcatMassa" data-subcat-id="' + subcatId + '">Selecionar Todos</button>';
+    html += '<input type="number" class="form-control form-control-sm d-inline-block me-1 inputQtdTodosSubcatMassa" data-subcat-id="' + subcatId + '" style="width:110px;" placeholder="Qtd p/ todos">';
+    html += '<button type="button" class="btn btn-sm btn-outline-secondary btnAplicarQtdSubcatMassa" data-subcat-id="' + subcatId + '">Aplicar Qtd</button>';
+    html += '</div>';
+    if (produtos.length === 0) {
+      html += '<p class="text-muted small mb-2">Nenhum produto encontrado nesta subcategoria.</p>';
+    } else {
+      html += '<table class="table table-bordered align-middle mb-2"><thead class="table-light"><tr>';
+      html += '<th><input type="checkbox" class="checkTodosSubcatMassa" data-subcat-id="' + subcatId + '"></th>';
+      html += '<th>Produto</th><th>Estoque Atual</th><th>Quantidade</th>';
+      html += '</tr></thead><tbody>';
+      produtos.forEach(function(p) {
+        html += '<tr>';
+        html += '<td><input type="checkbox" class="checkProdutoMassa"></td>';
+        html += '<td>' + p.nome + '<input type="hidden" class="inputProdutoIdMassa" value="' + p.id + '"></td>';
+        html += '<td>' + p.estoque + '</td>';
+        html += '<td><input type="number" class="form-control form-control-sm inputQuantidadeMassa" min="0" value=""></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+    $container.append(html);
+  });
+});
+
+$(document).on('change', '.checkTodosSubcatMassa', function() {
+  var checked = $(this).is(':checked');
+  var subcatId = $(this).data('subcat-id');
+  $('[data-subcat-loaded="' + subcatId + '"] .checkProdutoMassa').prop('checked', checked);
+});
+
+$(document).on('click', '.btnSelecionarTodosSubcatMassa', function() {
+  var subcatId = $(this).data('subcat-id');
+  $('[data-subcat-loaded="' + subcatId + '"] .checkProdutoMassa').prop('checked', true);
+});
+
+$(document).on('click', '.btnAplicarQtdSubcatMassa', function() {
+  var subcatId = $(this).data('subcat-id');
+  var qtd = parseFloat($('.inputQtdTodosSubcatMassa[data-subcat-id="' + subcatId + '"]').val());
+  if (isNaN(qtd) || qtd < 0) return;
+  $('[data-subcat-loaded="' + subcatId + '"] .checkProdutoMassa:checked').each(function() {
+    $(this).closest('tr').find('.inputQuantidadeMassa').val(qtd);
+  });
+});
+
+// ==========================================
+// PILLS DE FILTRO (aba Estoque)
+// ==========================================
+function buildSubcatPills() {
+  var html = '<button class="btn btn-sm btn-secondary me-1 mb-1" id="pillTodos">Todos</button>';
+  if (categoriasJson && categoriasJson.length > 0) {
+    categoriasJson.forEach(function(cat) {
+      cat.subcategorias.forEach(function(sub) {
+        html += '<button class="btn btn-sm btn-outline-secondary me-1 mb-1 pillSubcat" data-subcat="' + sub.nome + '">' +
+          cat.nome + ' \u203a ' + sub.nome + '</button>';
+      });
+    });
+  }
+  $('#filtroSubcatPills').html(html);
+}
+
+$(document).on('click', '#pillTodos', function() {
+  $('#filtroSubcatPills button').removeClass('btn-secondary').addClass('btn-outline-secondary');
+  $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
+  filtroSubcatAtivo = null;
+  aplicarFiltroEstoque();
+});
+
+$(document).on('click', '.pillSubcat', function() {
+  filtroSubcatAtivo = $(this).data('subcat');
+  $('#filtroSubcatPills button').removeClass('btn-secondary').addClass('btn-outline-secondary');
+  $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
+  aplicarFiltroEstoque();
+});
+
+function aplicarFiltroEstoque() {
+  var sit = $('#filtroSituacao').val();
+  var busca = $('#buscaItem').val().toLowerCase();
+  $('#tabelaEstoque tbody tr').each(function() {
+    var nome = $(this).find('td:nth-child(2)').text().toLowerCase();
+    var codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
+    var situacao = $(this).find('td:nth-child(7) .badge').text().toLowerCase();
+    var subcatRow = ($(this).data('subcategoria') || '').toString();
+    var show = true;
+    if (filtroSubcatAtivo && subcatRow !== filtroSubcatAtivo) show = false;
+    if (sit && ((sit === 'critico' && situacao !== 'crítico') || (sit === 'medio' && situacao !== 'médio') || (sit === 'alto' && situacao !== 'alto'))) show = false;
+    if (busca && !(nome.includes(busca) || codigo.includes(busca))) show = false;
+    $(this).toggle(show);
+  });
+}
+
 $(document).ready(function() {
 
+  // Construir pills de subcategoria
+  buildSubcatPills();
+
   // Abrir modal
-  $('#btnNovoItemFluxo').on('click', function(){
+  $('#btnNovoItemFluxo').on('click', function() {
     $('#modalWizardMov').modal('show');
-    // Limpa tabelas ao abrir
     $('#wizardTabelaProdutos tbody').empty();
     $('#wizardTabelaPerdas tbody').empty();
   });
@@ -287,22 +472,46 @@ $(document).ready(function() {
     }
   });
 
-  // Submissão do wizard
-  $('#formWizardMov').on('submit', function(e){
+  // Mostrar/ocultar painel de movimentação em massa
+  $('#btnMostrarMovimentoMassa').on('click', function() {
+    var $container = $('#containerMovimentoMassa');
+    if ($container.is(':visible')) {
+      $container.hide();
+    } else {
+      montarCategoriasMovimentoMassa();
+      $container.show();
+    }
+  });
+
+  // Submissão do wizard (individuais + massa em um único handler)
+  $('#formWizardMov').on('submit', function(e) {
     e.preventDefault();
-    $.post('/estoque/movimentar-wizard/', $(this).serialize(), function(resp){
-      if(resp.status === 'ok') { location.reload(); }
+    // Remove inputs de massa de submissões anteriores
+    $(this).find('.hidden-massa-input').remove();
+    // Adiciona inputs dos produtos selecionados em massa
+    var idx = 1000;
+    $('.checkProdutoMassa:checked').each(function() {
+      var produtoId = $(this).closest('tr').find('.inputProdutoIdMassa').val();
+      var qtd = $(this).closest('tr').find('.inputQuantidadeMassa').val();
+      if (produtoId && qtd && parseFloat(qtd) > 0) {
+        $('#formWizardMov').append('<input type="hidden" class="hidden-massa-input" name="prod_produto_id_' + idx + '" value="' + produtoId + '">');
+        $('#formWizardMov').append('<input type="hidden" class="hidden-massa-input" name="prod_quantidade_' + idx + '" value="' + qtd + '">');
+        idx++;
+      }
+    });
+    $.post('/estoque/movimentar-wizard/', $(this).serialize(), function(resp) {
+      if (resp.status === 'ok') { location.reload(); }
       else { alert(resp.mensagem || 'Erro ao registrar movimentações.'); }
     });
   });
 
   // Filtros do fluxo
-  $('#filtroTipoMov, #buscaMov, #filtroDataIni, #filtroDataFim').on('input change', function(){
+  $('#filtroTipoMov, #buscaMov, #filtroDataIni, #filtroDataFim').on('input change', function() {
     var tipo = $('#filtroTipoMov').val().toLowerCase();
     var busca = $('#buscaMov').val().toLowerCase();
     var dataIni = $('#filtroDataIni').val();
     var dataFim = $('#filtroDataFim').val();
-    $('#tabelaFluxoEstoque tbody tr').each(function(){
+    $('#tabelaFluxoEstoque tbody tr').each(function() {
       var tds = $(this).find('td');
       var data = tds.eq(0).text().trim();
       var produto = tds.eq(1).text().toLowerCase();
@@ -310,39 +519,25 @@ $(document).ready(function() {
       var tipoMov = tds.eq(3).text().toLowerCase();
       var usuario = tds.eq(5).text().toLowerCase();
       var show = true;
-      if(tipo && tipoMov !== tipo) show = false;
-      if(busca && !(produto.includes(busca) || categoria.includes(busca) || usuario.includes(busca))) show = false;
-      if(dataIni && data < dataIni) show = false;
-      if(dataFim && data > dataFim) show = false;
+      if (tipo && tipoMov !== tipo) show = false;
+      if (busca && !(produto.includes(busca) || categoria.includes(busca) || usuario.includes(busca))) show = false;
+      if (dataIni && data < dataIni) show = false;
+      if (dataFim && data > dataFim) show = false;
       $(this).toggle(show);
     });
   });
 
-  // Filtros do estoque
-  $('#filtroSituacao, #buscaItem').on('input change', function(){
-    var sit = $('#filtroSituacao').val();
-    var busca = $('#buscaItem').val().toLowerCase();
-    $('#tabelaEstoque tbody tr').each(function(){
-      var nome = $(this).find('td:nth-child(2)').text().toLowerCase();
-      var codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
-      var situacao = $(this).find('td:nth-child(7) .badge').text().toLowerCase();
-      var show = true;
-      if(sit && ((sit === 'critico' && situacao !== 'crítico') || (sit === 'medio' && situacao !== 'médio') || (sit === 'alto' && situacao !== 'alto'))){
-        show = false;
-      }
-      if(busca && !(nome.includes(busca) || codigo.includes(busca))){
-        show = false;
-      }
-      $(this).toggle(show);
-    });
+  // Filtros do estoque (situação + busca)
+  $('#filtroSituacao, #buscaItem').on('input change', function() {
+    aplicarFiltroEstoque();
   });
 
   // Desfazer movimentação
-  $(document).on('click', '.desfazer-mov', function(){
-    if(confirm('Deseja realmente desfazer este lançamento?')){
+  $(document).on('click', '.desfazer-mov', function() {
+    if (confirm('Deseja realmente desfazer este lançamento?')) {
       var id = $(this).data('id');
-      $.post('/estoque/desfazer-movimentacao/', {id: id, csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()}, function(data){
-        if(data.status === 'ok') { location.reload(); }
+      $.post('/estoque/desfazer-movimentacao/', {id: id, csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()}, function(data) {
+        if (data.status === 'ok') { location.reload(); }
         else { alert(data.mensagem || 'Erro ao desfazer lançamento.'); }
       });
     }

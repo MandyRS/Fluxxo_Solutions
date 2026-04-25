@@ -34,9 +34,9 @@ class UserEmpresaAdmin(admin.ModelAdmin):
 # ------------------------
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'codigo', 'empresa', 'preco')
-    list_filter = ('empresa',)
-    search_fields = ('nome', 'codigo', 'empresa__nome')
+    list_display = ('nome', 'codigo', 'empresa', 'categoria', 'subcategoria', 'preco')
+    list_filter = ('empresa', 'categoria', 'subcategoria')
+    search_fields = ('nome', 'codigo', 'empresa__nome', 'subcategoria')
     list_editable = ('preco',)
     list_per_page = 20
 

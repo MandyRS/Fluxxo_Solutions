@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .categoria_ajax import criar_categoria_ajax, excluir_categoria_ajax, criar_subcategoria_ajax, editar_categoria_ajax
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -24,6 +25,7 @@ urlpatterns = [
     path('estoque/autocomplete-produto/', views.autocomplete_produto, name='autocomplete_produto'),
     path('estoque/detalhes-produto/', views.detalhes_produto_estoque, name='detalhes_produto_estoque'),
     path('estoque/listar-produtos-categoria/', views.listar_produtos_categoria, name='listar_produtos_categoria'),
+    path('estoque/listar-produtos-subcategoria/', views.listar_produtos_subcategoria, name='listar_produtos_subcategoria'),
     path('estoque/movimentar-wizard/', views.movimentar_wizard, name='movimentar_wizard'),
     path('estoque/desfazer-movimentacao/', views.desfazer_movimentacao, name='desfazer_movimentacao'),
 
@@ -81,6 +83,12 @@ urlpatterns = [
     
     path('orcamentos/<int:id>/json/', views.orcamento_detalhe_json, name='orcamento_detalhe_json'),
     path('estoque/registrar-perda/', views.registrar_perda, name='registrar_perda'),
+
+    # ---------------- CATEGORIAS E SUBCATEGORIAS (AJAX) ----------------
+    path('categorias/criar/', criar_categoria_ajax, name='criar_categoria_ajax'),
+    path('categorias/<int:id>/editar/', editar_categoria_ajax, name='editar_categoria_ajax'),
+    path('categorias/<int:id>/excluir/', excluir_categoria_ajax, name='excluir_categoria_ajax'),
+    path('subcategorias/criar/', criar_subcategoria_ajax, name='criar_subcategoria_ajax'),
 ]
 
 if settings.DEBUG:

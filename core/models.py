@@ -1,3 +1,33 @@
+# ------------------------
+from django.db import models
+# CATEGORIAS E SUBCATEGORIAS DE PRODUTO
+# ------------------------
+class CategoriaProduto(models.Model):
+    empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100)
+    descricao = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        unique_together = ('empresa', 'nome')
+        verbose_name = 'Categoria de Produto'
+        verbose_name_plural = 'Categorias de Produto'
+
+    def __str__(self):
+        return self.nome
+
+class SubcategoriaProduto(models.Model):
+    empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
+    categoria = models.ForeignKey(CategoriaProduto, on_delete=models.CASCADE, related_name='subcategorias')
+    nome = models.CharField(max_length=100)
+    descricao = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        unique_together = ('empresa', 'categoria', 'nome')
+        verbose_name = 'Subcategoria de Produto'
+        verbose_name_plural = 'Subcategorias de Produto'
+
+    def __str__(self):
+        return f"{self.categoria.nome} - {self.nome}"
 
 from django.db import models
 from datetime import date
@@ -76,6 +106,7 @@ class Produto(models.Model):
     unidade = models.CharField(max_length=20, choices=UNIDADE_CHOICES, default='un')
     preco_unitario = models.DecimalField(max_digits=10, decimal_places=4, default=0)
     categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, default='produto')
+    subcategoria = models.CharField(max_length=50, blank=True, null=True, help_text="Subcategoria do produto dentro da categoria.")
 
     def __str__(self):
         return f"{self.nome} ({self.empresa.nome})"

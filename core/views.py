@@ -86,10 +86,16 @@ def selecionar_empresa(request):
 # -----------------------------
 # FUNÇÃO AUXILIAR
 # -----------------------------
-def get_empresa_do_usuario(user):
+
+# Busca empresa pela sessão
+def get_empresa_da_sessao(request):
+    from .models import Empresa
+    empresa_id = request.session.get('empresa_id')
+    if not empresa_id:
+        return None
     try:
-        return user.userempresa_set.first().empresa
-    except AttributeError:
+        return Empresa.objects.get(id=empresa_id)
+    except Empresa.DoesNotExist:
         return None
 
 
@@ -99,7 +105,7 @@ def get_empresa_do_usuario(user):
 
 @login_required
 def dashboard(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if not empresa:
         return render(request, "core/erro.html", {"mensagem": "Nenhuma empresa associada."})
 
@@ -166,7 +172,7 @@ from django.http import HttpResponse
 
 @login_required
 def fluxo_bancario_dashboard(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     bancos = Banco.objects.filter(empresa=empresa)
     banco_id = request.GET.get('banco')
     banco_selecionado = None
@@ -193,7 +199,7 @@ def fluxo_bancario_dashboard(request):
 
 @login_required
 def novo_lancamento_bancario(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if request.method == 'POST':
         form = LancamentoBancarioForm(request.POST)
         if form.is_valid():
@@ -211,7 +217,7 @@ def novo_lancamento_bancario(request):
 
 @login_required
 def importar_lancamentos_excel(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if request.method == 'POST' and request.FILES.get('arquivo'):
         arquivo = request.FILES['arquivo']
         df = pd.read_excel(arquivo)
@@ -259,7 +265,7 @@ def baixar_planilha_exemplo(request):
 @login_required
 @require_POST
 def criar_cliente_ajax(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if not empresa:
         return JsonResponse({'status': 'erro', 'mensagem': 'Empresa não encontrada.'})
 
@@ -289,7 +295,7 @@ def criar_cliente_ajax(request):
 @login_required
 @require_POST
 def excluir_cliente(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if request.method == 'POST':
         try:
             cliente = Cliente.objects.get(id=id, empresa=empresa)
@@ -301,7 +307,7 @@ def excluir_cliente(request, id):
 
 @login_required
 def editar_cliente(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     cliente = Cliente.objects.get(id=id, empresa=empresa)
     if request.method == 'GET':
         # retornar os dados em JSON
@@ -340,7 +346,7 @@ def editar_cliente(request, id):
 @login_required
 @require_POST
 def criar_produto_ajax(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if not empresa:
         return JsonResponse({'status': 'erro', 'mensagem': 'Empresa não encontrada.'})
 
@@ -372,6 +378,7 @@ def criar_produto_ajax(request):
         unidade=request.POST.get('unidade') or 'un',
         preco_unitario=preco_unitario,
         categoria=request.POST.get('categoria', 'produto'),
+        subcategoria=request.POST.get('subcategoria', ''),
     )
 
     # Cria o item de estoque vinculado ao produto
@@ -445,7 +452,7 @@ def criar_produto_ajax(request):
 @login_required
 @require_POST
 def excluir_produto(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if request.method == 'POST':
         try:
             produto = Produto.objects.get(id=id, empresa=empresa)
@@ -456,7 +463,7 @@ def excluir_produto(request, id):
     return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'})
 @login_required
 def editar_produto(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     try:
         produto = Produto.objects.get(id=id, empresa=empresa)
         if request.method == 'POST':
@@ -551,7 +558,7 @@ def editar_produto(request, id):
 @login_required
 @require_POST
 def criar_servico_ajax(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if not empresa:
         return JsonResponse({'status': 'erro', 'mensagem': 'Empresa não encontrada.'})
 
@@ -578,7 +585,7 @@ def criar_servico_ajax(request):
 @login_required
 @require_POST
 def editar_servico_ajax(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     try:
         servico = Servico.objects.get(id=id, empresa=empresa)
         data = {
@@ -592,7 +599,7 @@ def editar_servico_ajax(request, id):
         return JsonResponse({'erro': 'Serviço não encontrado'}, status=404)
 @login_required
 def excluir_servico_ajax(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if request.method == 'POST':
         try:
             servico = Servico.objects.get(id=id, empresa=empresa)
@@ -627,7 +634,7 @@ def listar_orcamentos(request):
 def criar_orcamento(request):
     try:
         data = request.POST
-        empresa = get_empresa_do_usuario(request.user)
+        empresa = get_empresa_da_sessao(request)
         itens = json.loads(data.get('itens', '[]'))
         desconto = float(data.get('desconto', 0) or 0)
 
@@ -699,7 +706,7 @@ def editar_orcamento(request, orcamento_id):
         # Limpa itens antigos
         ItemOrcamento.objects.filter(orcamento=orcamento).delete()
 
-        empresa = get_empresa_do_usuario(request.user)
+        empresa = get_empresa_da_sessao(request)
         total = 0
         for item in itens:
             tipo = item.get('tipo')
@@ -991,11 +998,11 @@ def autocomplete_produto_servico(request):
 
 @login_required
 def configuracoes(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if not empresa:
         return redirect('core:index')
 
-    from .models import ItemEstoque
+    from .models import ItemEstoque, CategoriaProduto, SubcategoriaProduto
     def get_produtos_list(categoria):
         produtos = Produto.objects.filter(empresa=empresa, categoria=categoria)
         lista = []
@@ -1015,6 +1022,7 @@ def configuracoes(request):
             })
         return lista
 
+    from django.db.models import Prefetch
     context = {
         'clientes_list': Cliente.objects.filter(empresa=empresa),
         'produtos_list': get_produtos_list('produto'),
@@ -1024,6 +1032,8 @@ def configuracoes(request):
         'rotulos_list': get_produtos_list('rotulo'),
         'servicos_list': Servico.objects.filter(empresa=empresa),
         'bancos_list': Banco.objects.filter(empresa=empresa),
+        'categorias_list': CategoriaProduto.objects.filter(empresa=empresa)
+            .prefetch_related(Prefetch('subcategorias', queryset=SubcategoriaProduto.objects.filter(empresa=empresa))),
         'empresa': empresa,
     }
     return render(request, 'configuracoes.html', context)
@@ -1031,7 +1041,7 @@ def configuracoes(request):
 
 @login_required
 def suporte(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     modulos = ['Financeiro', 'Dashboard', 'Orçamentos', 'Configurações', 'Relatórios', 'Outro']
     
     context = {
@@ -1048,7 +1058,7 @@ from django.views.decorators.csrf import csrf_exempt
 @login_required
 @require_POST
 def criar_banco_ajax(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     if not empresa:
         return JsonResponse({'status': 'erro', 'mensagem': 'Empresa não encontrada.'})
     nome = request.POST.get('nome')
@@ -1073,7 +1083,7 @@ def criar_banco_ajax(request):
 @login_required
 @require_POST
 def excluir_banco_ajax(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     try:
         banco = Banco.objects.get(id=id, empresa=empresa)
         banco.delete()
@@ -1084,7 +1094,7 @@ def excluir_banco_ajax(request, id):
 @login_required
 @require_POST
 def editar_banco_ajax(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     try:
         banco = Banco.objects.get(id=id, empresa=empresa)
         banco.nome = request.POST.get('nome')
@@ -1104,7 +1114,7 @@ def editar_banco_ajax(request, id):
 
 @login_required
 def listar_bancos_ajax(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     bancos = Banco.objects.filter(empresa=empresa)
     bancos_data = [
         {
@@ -1124,7 +1134,7 @@ def listar_bancos_ajax(request):
 
 @login_required
 def estoque(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     itens = ItemEstoque.objects.filter(empresa=empresa, produto__isnull=False)
     movimentacoes = MovimentacaoEstoque.objects.filter(item__empresa=empresa).order_by('-data', '-id')[:100]
     perdas = MovimentacaoEstoque.objects.filter(item__empresa=empresa, tipo='saida', observacao__icontains='perda').order_by('-data', '-id')[:50]
@@ -1133,11 +1143,22 @@ def estoque(request):
     for item in itens:
         if item.produto and item.produto.preco_unitario:
             valor_total_estoque += float(item.quantidade) * float(item.produto.preco_unitario)
+    from .models import CategoriaProduto
+    categorias = CategoriaProduto.objects.filter(empresa=empresa).prefetch_related('subcategorias')
+    categorias_json = json.dumps([
+        {
+            'id': cat.id,
+            'nome': cat.nome,
+            'subcategorias': [{'id': sub.id, 'nome': sub.nome} for sub in cat.subcategorias.all()]
+        }
+        for cat in categorias
+    ])
     context = {
         'itens': itens,
         'movimentacoes': movimentacoes,
         'perdas': perdas,
         'valor_total_estoque': f"{valor_total_estoque:.2f}",
+        'categorias_json': categorias_json,
     }
     return render(request, 'estoque.html', context)
 
@@ -1145,7 +1166,7 @@ def estoque(request):
 @login_required
 @require_POST
 def criar_item_estoque(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     produto_id = request.POST.get('produto_id')
     produto = None
     if produto_id:
@@ -1247,7 +1268,7 @@ def criar_item_estoque(request):
 
 @login_required
 def editar_item_estoque(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     item = get_object_or_404(ItemEstoque, id=id, empresa=empresa)
     if request.method == 'GET':
         return JsonResponse({
@@ -1273,7 +1294,7 @@ def editar_item_estoque(request, id):
 @login_required
 @require_POST
 def excluir_item_estoque(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     item = get_object_or_404(ItemEstoque, id=id, empresa=empresa)
     item.delete()
     return JsonResponse({'status': 'ok'})
@@ -1282,7 +1303,7 @@ def excluir_item_estoque(request, id):
 @login_required
 @require_POST
 def movimentar_estoque(request, id):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     item = get_object_or_404(ItemEstoque, id=id, empresa=empresa)
     tipo = request.POST.get('tipo')
     quantidade = float(request.POST.get('quantidade', 0))
@@ -1310,7 +1331,7 @@ from django.views.decorators.http import require_GET
 @login_required
 @require_GET
 def autocomplete_produto(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     termo = request.GET.get('q', '')
     categoria = request.GET.get('categoria', '')
     produtos = Produto.objects.filter(empresa=empresa, nome__icontains=termo)
@@ -1337,7 +1358,7 @@ def autocomplete_produto(request):
 @login_required
 @require_GET
 def detalhes_produto_estoque(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     produto_id = request.GET.get('id')
     from .models import ItemEstoque
     try:
@@ -1360,7 +1381,7 @@ def detalhes_produto_estoque(request):
 @login_required
 @require_POST
 def movimentar_wizard(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     tipo = request.POST.get('wizard_tipo', 'entrada')
     from .models import Produto, ItemEstoque, MovimentacaoEstoque, ProdutoMateriaPrima
     from datetime import date as dt_date
@@ -1459,13 +1480,37 @@ from django.http import JsonResponse
 @login_required
 def listar_produtos_categoria(request):
     categoria = request.GET.get('categoria')
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     from .models import Produto, ItemEstoque
     produtos = Produto.objects.filter(empresa=empresa, categoria=categoria)
     itens = ItemEstoque.objects.filter(empresa=empresa, produto__in=produtos)
     lista = []
     for p in produtos:
         item = next((i for i in itens if i.produto_id==p.id), None)
+        lista.append({
+            'id': p.id,
+            'nome': p.nome,
+            'codigo': p.codigo,
+            'estoque': str(item.quantidade) if item else '0',
+            'unidade': p.unidade,
+            'subcategoria': p.subcategoria or '',
+        })
+    return JsonResponse({'produtos': lista})
+
+@login_required
+def listar_produtos_subcategoria(request):
+    subcategoria_id = request.GET.get('subcategoria_id')
+    empresa = get_empresa_da_sessao(request)
+    from .models import Produto, ItemEstoque, SubcategoriaProduto
+    try:
+        subcat = SubcategoriaProduto.objects.get(id=subcategoria_id, empresa=empresa)
+    except (SubcategoriaProduto.DoesNotExist, TypeError, ValueError):
+        return JsonResponse({'produtos': []})
+    produtos = Produto.objects.filter(empresa=empresa, subcategoria__iexact=subcat.nome)
+    itens_dict = {i.produto_id: i for i in ItemEstoque.objects.filter(empresa=empresa, produto__in=produtos)}
+    lista = []
+    for p in produtos:
+        item = itens_dict.get(p.id)
         lista.append({
             'id': p.id,
             'nome': p.nome,
@@ -1502,7 +1547,7 @@ from django.views.decorators.http import require_POST
 @login_required
 @require_POST
 def registrar_perda(request):
-    empresa = get_empresa_do_usuario(request.user)
+    empresa = get_empresa_da_sessao(request)
     produto_id = request.POST.get('produto_id')
     quantidade = float(request.POST.get('quantidade', 0))
     from .models import Produto, ItemEstoque, MovimentacaoEstoque
