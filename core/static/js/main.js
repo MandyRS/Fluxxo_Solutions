@@ -1,3 +1,24 @@
+// Filtro de tipo de movimentação na aba Fluxo de Estoque
+document.addEventListener('DOMContentLoaded', function() {
+    var filtroTipo = document.getElementById('filtroTipoMov');
+    if (filtroTipo) {
+        filtroTipo.addEventListener('change', function() {
+            var tipo = this.value;
+            var linhas = document.querySelectorAll('#tabelaFluxoEstoque tbody tr');
+            linhas.forEach(function(tr) {
+                // Pega o texto da célula "Tipo" (quarta coluna, index 3)
+                var tdTipo = tr.querySelectorAll('td')[3];
+                if (!tdTipo) return;
+                var valor = tdTipo.textContent.trim().toLowerCase();
+                if (!tipo || valor === tipo.toLowerCase()) {
+                    tr.style.display = '';
+                } else {
+                    tr.style.display = 'none';
+                }
+            });
+        });
+    }
+});
 // Efeito de rolagem na Navbar
 window.addEventListener('scroll', () => {
     const nav = document.querySelector('.navbar');

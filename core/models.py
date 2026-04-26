@@ -1,33 +1,4 @@
-# ------------------------
-from django.db import models
-# CATEGORIAS E SUBCATEGORIAS DE PRODUTO
-# ------------------------
-class CategoriaProduto(models.Model):
-    empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
-    nome = models.CharField(max_length=100)
-    descricao = models.CharField(max_length=255, blank=True, null=True)
 
-    class Meta:
-        unique_together = ('empresa', 'nome')
-        verbose_name = 'Categoria de Produto'
-        verbose_name_plural = 'Categorias de Produto'
-
-    def __str__(self):
-        return self.nome
-
-class SubcategoriaProduto(models.Model):
-    empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
-    categoria = models.ForeignKey(CategoriaProduto, on_delete=models.CASCADE, related_name='subcategorias')
-    nome = models.CharField(max_length=100)
-    descricao = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        unique_together = ('empresa', 'categoria', 'nome')
-        verbose_name = 'Subcategoria de Produto'
-        verbose_name_plural = 'Subcategorias de Produto'
-
-    def __str__(self):
-        return f"{self.categoria.nome} - {self.nome}"
 
 from django.db import models
 from datetime import date
@@ -42,6 +13,9 @@ class ProdutoMateriaPrima(models.Model):
     produto_final = models.ForeignKey('Produto', on_delete=models.CASCADE, related_name='materias_primas')
     materia_prima = models.ForeignKey('Produto', on_delete=models.CASCADE, related_name='usado_em')
     quantidade = models.DecimalField(max_digits=10, decimal_places=3)
+
+    class Meta:
+        unique_together = ('empresa', 'produto_final', 'materia_prima')
 
     def __str__(self):
         return f"{self.produto_final.nome} -> {self.materia_prima.nome} ({self.quantidade})"
@@ -106,7 +80,7 @@ class Produto(models.Model):
     unidade = models.CharField(max_length=20, choices=UNIDADE_CHOICES, default='un')
     preco_unitario = models.DecimalField(max_digits=10, decimal_places=4, default=0)
     categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, default='produto')
-    subcategoria = models.CharField(max_length=50, blank=True, null=True, help_text="Subcategoria do produto dentro da categoria.")
+    subcategoria = models.ForeignKey('SubcategoriaProduto', on_delete=models.SET_NULL, null=True, blank=True, related_name='produtos')
 
     def __str__(self):
         return f"{self.nome} ({self.empresa.nome})"
@@ -253,7 +227,7 @@ class LancamentoBancario(models.Model):
 # ------------------------
 class ItemEstoque(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
-    produto = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True)
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, null=True, blank=True)
     nome = models.CharField(max_length=200)
     codigo = models.CharField(max_length=50, blank=True)
     quantidade = models.DecimalField(max_digits=14, decimal_places=2, default=0)
@@ -291,3 +265,33 @@ class MovimentacaoEstoque(models.Model):
     def __str__(self):
         return f"{self.get_tipo_display()} - {self.item.nome} ({self.quantidade})"
         
+# ------------------------
+from django.db import models
+# CATEGORIAS E SUBCATEGORIAS DE PRODUTO
+# ------------------------
+class CategoriaProduto(models.Model):
+    empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
+    nome = models.CharField(max_length=100)
+    descricao = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        unique_together = ('empresa', 'nome')
+        verbose_name = 'Categoria de Produto'
+        verbose_name_plural = 'Categorias de Produto'
+
+    def __str__(self):
+        return self.nome
+
+class SubcategoriaProduto(models.Model):
+    empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
+    categoria = models.ForeignKey(CategoriaProduto, on_delete=models.CASCADE, related_name='subcategorias')
+    nome = models.CharField(max_length=100)
+    descricao = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        unique_together = ('empresa', 'categoria', 'nome')
+        verbose_name = 'Subcategoria de Produto'
+        verbose_name_plural = 'Subcategorias de Produto'
+
+    def __str__(self):
+        return f"{self.categoria.nome} - {self.nome}"

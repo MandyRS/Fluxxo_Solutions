@@ -1,3 +1,4 @@
+
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import UserEmpresa
 from django.contrib.auth import logout
@@ -368,6 +369,14 @@ def criar_produto_ajax(request):
     estoque_inicial = parse_decimal_br(request.POST.get('estoque_inicial'))
     peso = parse_decimal_br(request.POST.get('peso'))
 
+    subcat_id = request.POST.get('subcategoria')
+    from .models import SubcategoriaProduto
+    subcategoria = None
+    if subcat_id:
+        try:
+            subcategoria = SubcategoriaProduto.objects.get(id=subcat_id, empresa=empresa)
+        except SubcategoriaProduto.DoesNotExist:
+            subcategoria = None
     produto = Produto.objects.create(
         empresa=empresa,
         codigo=request.POST.get('codigo'),
@@ -378,7 +387,7 @@ def criar_produto_ajax(request):
         unidade=request.POST.get('unidade') or 'un',
         preco_unitario=preco_unitario,
         categoria=request.POST.get('categoria', 'produto'),
-        subcategoria=request.POST.get('subcategoria', ''),
+        subcategoria=subcategoria,
     )
 
     # Cria o item de estoque vinculado ao produto
@@ -403,37 +412,32 @@ def criar_produto_ajax(request):
             criado_por=request.user,
         )
 
-    # Se produto final, salvar ficha técnica de matéria-prima
-    if produto.categoria == 'produto':
-        from .models import ProdutoMateriaPrima
-        mp_indices = set()
-        for key in request.POST:
-            if key.startswith('mp_produto_id_'):
-                try:
-                    mp_indices.add(int(key.replace('mp_produto_id_', '')))
-                except ValueError:
-                    pass
-        for i in sorted(mp_indices):
-            mp_id = request.POST.get(f'mp_produto_id_{i}', '').strip()
-            mp_qtd = request.POST.get(f'mp_quantidade_{i}', '0').strip()
-            if not mp_id:
-                continue
-            try:
-                mp_qtd = float(mp_qtd)
-            except ValueError:
-                continue
-            if mp_qtd <= 0:
-                continue
-            try:
-                mp_produto = Produto.objects.get(id=mp_id, empresa=empresa)
-            except Produto.DoesNotExist:
-                continue
-            ProdutoMateriaPrima.objects.create(
-                empresa=empresa,
-                produto_final=produto,
-                materia_prima=mp_produto,
-                quantidade=mp_qtd,
-            )
+    # Salvar ficha técnica de matéria-prima
+    from .models import ProdutoMateriaPrima
+    ProdutoMateriaPrima.objects.filter(produto_final=produto, empresa=empresa).delete()
+    mp_keys = [k for k in request.POST if k.startswith('mp_produto_id_')]
+    for key in mp_keys:
+        idx = key.replace('mp_produto_id_', '')
+        mp_id = request.POST.get(key, '').strip()
+        mp_qtd = request.POST.get(f'mp_quantidade_{idx}', '0').strip()
+        if not mp_id:
+            continue
+        try:
+            mp_qtd = float(mp_qtd)
+        except ValueError:
+            continue
+        if mp_qtd <= 0:
+            continue
+        try:
+            mp_produto = Produto.objects.get(id=mp_id, empresa=empresa)
+        except Produto.DoesNotExist:
+            continue
+        ProdutoMateriaPrima.objects.update_or_create(
+            empresa=empresa,
+            produto_final=produto,
+            materia_prima=mp_produto,
+            defaults={'quantidade': mp_qtd},
+        )
 
     return JsonResponse({
         'status': 'ok',
@@ -456,6 +460,9 @@ def excluir_produto(request, id):
     if request.method == 'POST':
         try:
             produto = Produto.objects.get(id=id, empresa=empresa)
+            # Excluir ItemEstoque vinculado antes de excluir o produto
+            from .models import ItemEstoque
+            ItemEstoque.objects.filter(produto=produto, empresa=empresa).delete()
             produto.delete()
             return JsonResponse({'status': 'ok', 'mensagem': 'Produto excluído com sucesso'})
         except Produto.DoesNotExist:
@@ -485,41 +492,38 @@ def editar_produto(request, id):
             produto.unidade = request.POST.get('unidade', produto.unidade) or 'un'
             produto.preco_unitario = parse_decimal_br(request.POST.get('preco_unitario', produto.preco_unitario))
             produto.preco = parse_decimal_br(request.POST.get('preco', produto.preco))
-            produto.categoria = request.POST.get('categoria', produto.categoria)
+            _cat_choices = ['produto', 'materia_prima', 'embalagem', 'tampa', 'rotulo']
+            _cat_nova = request.POST.get('categoria', produto.categoria)
+            if _cat_nova in _cat_choices:
+                produto.categoria = _cat_nova
             produto.save()
 
-            # Atualizar ficha técnica se produto final
-            if produto.categoria == 'produto':
-                from .models import ProdutoMateriaPrima
-                ProdutoMateriaPrima.objects.filter(produto_final=produto, empresa=empresa).delete()
-                mp_indices = set()
-                for key in request.POST:
-                    if key.startswith('mp_produto_id_'):
-                        try:
-                            mp_indices.add(int(key.replace('mp_produto_id_', '')))
-                        except ValueError:
-                            pass
-                for i in sorted(mp_indices):
-                    mp_id = request.POST.get(f'mp_produto_id_{i}', '').strip()
-                    mp_qtd = request.POST.get(f'mp_quantidade_{i}', '0').strip()
-                    if not mp_id:
-                        continue
-                    try:
-                        mp_qtd = float(mp_qtd)
-                    except ValueError:
-                        continue
-                    if mp_qtd <= 0:
-                        continue
-                    try:
-                        mp_produto = Produto.objects.get(id=mp_id, empresa=empresa)
-                    except Produto.DoesNotExist:
-                        continue
-                    ProdutoMateriaPrima.objects.create(
-                        empresa=empresa,
-                        produto_final=produto,
-                        materia_prima=mp_produto,
-                        quantidade=mp_qtd,
-                    )
+            # Atualizar ficha técnica de matéria-prima
+            from .models import ProdutoMateriaPrima
+            ProdutoMateriaPrima.objects.filter(produto_final=produto, empresa=empresa).delete()
+            mp_keys = [k for k in request.POST if k.startswith('mp_produto_id_')]
+            for key in mp_keys:
+                idx = key.replace('mp_produto_id_', '')
+                mp_id = request.POST.get(key, '').strip()
+                mp_qtd = request.POST.get(f'mp_quantidade_{idx}', '0').strip()
+                if not mp_id:
+                    continue
+                try:
+                    mp_qtd = float(mp_qtd)
+                except ValueError:
+                    continue
+                if mp_qtd <= 0:
+                    continue
+                try:
+                    mp_produto = Produto.objects.get(id=mp_id, empresa=empresa)
+                except Produto.DoesNotExist:
+                    continue
+                ProdutoMateriaPrima.objects.update_or_create(
+                    empresa=empresa,
+                    produto_final=produto,
+                    materia_prima=mp_produto,
+                    defaults={'quantidade': mp_qtd},
+                )
 
             return JsonResponse({'status': 'ok', 'id': produto.id})
         # Buscar estoque inicial (quantidade do ItemEstoque vinculado)
@@ -530,13 +534,12 @@ def editar_produto(request, id):
             return ("%.2f" % float(valor)).replace('.', ',')
         # Buscar ficha técnica de matéria-prima
         materias_primas = []
-        if produto.categoria == 'produto':
-            for mp in ProdutoMateriaPrima.objects.filter(produto_final=produto, empresa=empresa):
-                materias_primas.append({
-                    'id': mp.materia_prima.id,
-                    'nome': mp.materia_prima.nome,
-                    'quantidade': float(mp.quantidade),
-                })
+        for mp in ProdutoMateriaPrima.objects.filter(produto_final=produto, empresa=empresa):
+            materias_primas.append({
+                'id': mp.materia_prima.id,
+                'nome': mp.materia_prima.nome,
+                'quantidade': float(mp.quantidade),
+            })
         data = {
             'id': produto.id,
             'codigo': produto.codigo,
@@ -1022,7 +1025,18 @@ def configuracoes(request):
             })
         return lista
 
-    from django.db.models import Prefetch
+    from django.db.models import Prefetch, OuterRef, Subquery, DecimalField
+    from .models import ItemEstoque as _IE
+
+    # Anotação de estoque atual em cada produto
+    estoque_subquery = Subquery(
+        _IE.objects.filter(produto=OuterRef('pk'), empresa=empresa).values('quantidade')[:1],
+        output_field=DecimalField()
+    )
+    produtos_com_estoque = Produto.objects.filter(empresa=empresa).annotate(
+        estoque_atual=estoque_subquery
+    )
+
     context = {
         'clientes_list': Cliente.objects.filter(empresa=empresa),
         'produtos_list': get_produtos_list('produto'),
@@ -1033,7 +1047,14 @@ def configuracoes(request):
         'servicos_list': Servico.objects.filter(empresa=empresa),
         'bancos_list': Banco.objects.filter(empresa=empresa),
         'categorias_list': CategoriaProduto.objects.filter(empresa=empresa)
-            .prefetch_related(Prefetch('subcategorias', queryset=SubcategoriaProduto.objects.filter(empresa=empresa))),
+            .prefetch_related(
+                Prefetch(
+                    'subcategorias',
+                    queryset=SubcategoriaProduto.objects.filter(empresa=empresa).prefetch_related(
+                        Prefetch('produtos', queryset=produtos_com_estoque)
+                    )
+                )
+            ),
         'empresa': empresa,
     }
     return render(request, 'configuracoes.html', context)
@@ -1321,6 +1342,24 @@ def movimentar_estoque(request, id):
         item.quantidade = float(item.quantidade) + quantidade
     elif tipo == 'saida':
         item.quantidade = float(item.quantidade) - quantidade
+        # Dar baixa nas matérias-primas vinculadas (ficha técnica)
+        if item.produto:
+            from .models import ProdutoMateriaPrima, ItemEstoque as IE
+            ficha = ProdutoMateriaPrima.objects.filter(produto_final=item.produto, empresa=empresa)
+            for mp in ficha:
+                item_mp = IE.objects.filter(produto=mp.materia_prima, empresa=empresa).first()
+                if item_mp:
+                    consumo = float(mp.quantidade) * quantidade
+                    item_mp.quantidade = float(item_mp.quantidade) - consumo
+                    item_mp.save()
+                    MovimentacaoEstoque.objects.create(
+                        item=item_mp,
+                        tipo='saida',
+                        quantidade=consumo,
+                        data=dt_date.today(),
+                        observacao=f'Consumo automático para {item.produto.nome}',
+                        criado_por=request.user,
+                    )
     elif tipo == 'ajuste':
         item.quantidade = quantidade
     item.save()
@@ -1395,6 +1434,7 @@ def movimentar_wizard(request):
             except ValueError:
                 pass
 
+    num_prod = len(indices_prod)
     for idx in sorted(indices_prod):
         produto_id = request.POST.get(f'prod_produto_id_{idx}', '').strip()
         qtd = request.POST.get(f'prod_quantidade_{idx}', '0').strip()
@@ -1419,13 +1459,18 @@ def movimentar_wizard(request):
         elif tipo == 'saida':
             item.quantidade = float(item.quantidade) - qtd
         item.save()
+        # Observação: "Movimentação em lote" se mais de 1 produto, senão "Movimentação individual"
+        if num_prod > 1:
+            obs = 'Movimentação em lote'
+        else:
+            obs = 'Movimentação individual'
         MovimentacaoEstoque.objects.create(
             item=item, tipo=tipo, quantidade=qtd,
-            data=dt_date.today(), observacao='Movimentação em lote',
+            data=dt_date.today(), observacao=obs,
             criado_por=request.user,
         )
-        # Se saída de produto final, baixar matérias-primas automaticamente (via ficha técnica)
-        if tipo == 'saida' and p.categoria == 'produto':
+        # Se saída, baixar matérias-primas automaticamente (via ficha técnica)
+        if tipo == 'saida':
             ficha = ProdutoMateriaPrima.objects.filter(produto_final=p, empresa=empresa)
             for mp in ficha:
                 item_mp = ItemEstoque.objects.filter(produto=mp.materia_prima, empresa=empresa).first()
@@ -1506,7 +1551,7 @@ def listar_produtos_subcategoria(request):
         subcat = SubcategoriaProduto.objects.get(id=subcategoria_id, empresa=empresa)
     except (SubcategoriaProduto.DoesNotExist, TypeError, ValueError):
         return JsonResponse({'produtos': []})
-    produtos = Produto.objects.filter(empresa=empresa, subcategoria__iexact=subcat.nome)
+    produtos = Produto.objects.filter(empresa=empresa, subcategoria=subcat)
     itens_dict = {i.produto_id: i for i in ItemEstoque.objects.filter(empresa=empresa, produto__in=produtos)}
     lista = []
     for p in produtos:
@@ -1574,3 +1619,32 @@ def registrar_perda(request):
         return JsonResponse({'status': 'ok'})
     except Produto.DoesNotExist:
         return JsonResponse({'status': 'erro', 'mensagem': 'Produto não encontrado.'})
+
+from .models import SubcategoriaProduto, Produto
+# -----------------------------
+# API: Subcategorias e Produtos de Matéria-Prima
+# -----------------------------
+from django.views.decorators.http import require_GET
+
+@login_required
+@require_GET
+def listar_materias_primas_por_subcategoria(request):
+    empresa = get_empresa_da_sessao(request)
+    if not empresa:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Empresa não encontrada.'}, status=400)
+
+    # Busca subcategorias de matéria-prima
+    subcategorias = SubcategoriaProduto.objects.filter(empresa=empresa, categoria__nome__icontains='matéria')
+    resultado = []
+    for sub in subcategorias:
+        produtos = Produto.objects.filter(empresa=empresa, categoria='materia_prima', subcategoria=sub.nome)
+        resultado.append({
+            'subcategoria_id': sub.id,
+            'subcategoria_nome': sub.nome,
+            'produtos': [
+                {'id': p.id, 'nome': p.nome, 'unidade': p.unidade, 'descricao': p.descricao or ''}
+                for p in produtos
+            ]
+        })
+
+    return JsonResponse({'status': 'ok', 'subcategorias': resultado})

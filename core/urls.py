@@ -1,3 +1,4 @@
+   
 from django.urls import path
 from . import views
 from .categoria_ajax import criar_categoria_ajax, excluir_categoria_ajax, criar_subcategoria_ajax, editar_categoria_ajax
@@ -89,6 +90,9 @@ urlpatterns = [
     path('categorias/<int:id>/editar/', editar_categoria_ajax, name='editar_categoria_ajax'),
     path('categorias/<int:id>/excluir/', excluir_categoria_ajax, name='excluir_categoria_ajax'),
     path('subcategorias/criar/', criar_subcategoria_ajax, name='criar_subcategoria_ajax'),
+
+     # ---------------- MATÉRIA-PRIMA (API) ----------------
+    path('materias-primas/subcategorias/', views.listar_materias_primas_por_subcategoria, name='listar_materias_primas_por_subcategoria'),
 ]
 
 if settings.DEBUG:

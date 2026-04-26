@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load extra_filters %}
 {% block content %}
 
 <div class="container mt-4">
@@ -98,7 +99,7 @@
                       <td>{{ p.peso|floatformat:2 }}</td>
                       <td>{{ p.unidade }}</td>
                       <td>R$ {{ p.preco_unitario|floatformat:2 }}</td>
-                      <td>{{ p.estoque_inicial|default_if_none:"0,00" }}</td>
+                      <td>{{ p.estoque_atual|default_if_none:"0,00"|floatformat:2 }}</td>
                       <td>
                         <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
                         <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ p.id }}">Excluir</button>
@@ -261,6 +262,7 @@
         <div class="modal-body">
           <input type="hidden" id="produto-id" name="id">
           <input type="hidden" id="produto-categoria" name="categoria" value="produto">
+          <input type="hidden" id="produto-subcategoria" name="subcategoria">
           <div class="mb-2"><label>Código</label><input type="text" name="codigo" class="form-control"></div>
           <div class="mb-2"><label>Nome</label><input type="text" name="nome" class="form-control"></div>
           <div class="mb-2"><label>Descrição</label><input type="text" name="descricao" class="form-control"></div>
@@ -289,20 +291,27 @@
           </div>
           <div id="secaoFichaTecnica" style="display:none">
             <hr>
-            <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="mb-2">
               <label class="form-label fw-semibold mb-0">Ficha Técnica de Matéria-Prima</label>
-              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAdicionarMPFicha">+ Adicionar Matéria-Prima</button>
             </div>
-            <table class="table table-sm table-bordered" id="tabelaMPFicha">
-              <thead class="table-secondary">
-                <tr>
-                  <th>Matéria-Prima</th>
-                  <th style="width:160px">Qtd por unidade do produto</th>
-                  <th style="width:50px"></th>
-                </tr>
-              </thead>
-              <tbody id="tabelaMPFichaBody"></tbody>
-            </table>
+            {% for sub in categorias_list|get_materia_prima_subcats %}
+              <div class="mb-2">
+                <div class="fw-semibold">{{ sub.nome }}</div>
+                <div class="row">
+                  {% for mp in sub.produtos.all %}
+                  <div class="col-md-6 mb-2 d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input me-2 mp-checkbox" name="mp_produto_id_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" value="{{ mp.id }}">
+                    <span class="me-2">{{ mp.nome }}</span>
+                    <input type="number" name="mp_quantidade_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" class="form-control form-control-sm ms-2" min="0" step="0.001" style="width:100px" placeholder="Qtd">
+                  </div>
+                  {% empty %}
+                  <div class="col-12 text-muted small">Nenhum produto nesta subcategoria.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% empty %}
+              <div class="text-muted small">Nenhuma subcategoria de matéria-prima cadastrada.</div>
+            {% endfor %}
             <small class="text-muted">A baixa no estoque de matéria-prima será feita automaticamente ao registrar uma saída deste produto.</small>
           </div>
         </div>
@@ -434,6 +443,21 @@ var categoriasList = [
 ];
 
 $(document).ready(function(){
+
+    // Serializa ficha técnica de matéria-prima (checkboxes) no formato esperado pelo backend
+    $('#formProduto').on('submit', function(e) {
+      // Remove campos antigos
+      $(this).find('.mp-hidden').remove();
+      // Adiciona campos para cada matéria-prima marcada
+      var idx = 0;
+      $('#secaoFichaTecnica .mp-checkbox:checked').each(function() {
+        var mpId = $(this).val();
+        var qtd = $(this).closest('.d-flex').find('input[type=number]').val();
+        $('<input>').attr({type:'hidden', name:'mp_produto_id_' + idx, value:mpId, class:'mp-hidden'}).appendTo('#formProduto');
+        $('<input>').attr({type:'hidden', name:'mp_quantidade_' + idx, value:qtd, class:'mp-hidden'}).appendTo('#formProduto');
+        idx++;
+      });
+    });
   const csrftoken = $('[name=csrfmiddlewaretoken]').first().val();
 
   // Envia CSRF token automaticamente em todo POST AJAX
@@ -593,8 +617,8 @@ $(document).ready(function(){
     $('#toggleFichaTecnica').prop('checked', false);
     $('#secaoFichaTecnica').hide();
     esconderAvisoFichaTecnica();
-    var categoria = $(this).data('categoria');
-    $('#produto-categoria').val(categoria);
+    var subcategoria = $(this).data('subcategoria');
+    $('#produto-subcategoria').val(subcategoria);
     $('#modalProduto .modal-title').text('Novo Produto');
     if (podeUsarFichaTecnica()) {
       $('#toggleFichaTecnica').closest('.form-check').show();
@@ -634,8 +658,11 @@ $(document).ready(function(){
       if (mps.length > 0) {
         $('#toggleFichaTecnica').prop('checked', true);
         $('#secaoFichaTecnica').show();
-        mps.forEach(function(mp, i) {
-          $('#tabelaMPFichaBody').append(criarLinhaMPFicha(i, mp.id, mp.nome, mp.quantidade));
+        // Marca os checkboxes e preenche as quantidades
+        mps.forEach(function(mp) {
+          var $chk = $('#secaoFichaTecnica .mp-checkbox[value="'+mp.id+'"]');
+          $chk.prop('checked', true);
+          $chk.closest('.d-flex').find('input[type=number]').val(mp.quantidade);
         });
       } else {
         $('#toggleFichaTecnica').prop('checked', false);

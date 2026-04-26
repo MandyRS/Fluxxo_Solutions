@@ -16,7 +16,10 @@
 
     <!-- Aba Estoque -->
     <div class="tab-pane fade show active" id="estoque-lista" role="tabpanel">
-      <div class="mb-2" id="filtroSubcatPills"></div>
+      <div class="mb-2 d-flex align-items-center" id="filtroSubcatPills">
+        <select id="filtroCategoria" class="form-select form-select-sm me-2" style="width:auto; display:inline-block; max-width:200px;"></select>
+        <select id="filtroSubcategoria" class="form-select form-select-sm me-2" style="width:auto; display:inline-block; max-width:200px; display:none;"></select>
+      </div>
       <div class="row mb-2">
         <div class="col-md-4 d-flex align-items-center">
           <h5 class="mb-0 me-3">Produtos em Estoque</h5>
@@ -46,7 +49,7 @@
         </thead>
         <tbody>
           {% for item in itens %}
-          <tr data-subcategoria="{% if item.produto %}{{ item.produto.subcategoria|default:'' }}{% endif %}">
+          <tr data-subcategoria="{% if item.produto and item.produto.subcategoria %}{{ item.produto.subcategoria.nome }}{% endif %}">
             <td>{{ item.codigo|default:"-" }}</td>
             <td>{{ item.nome }}</td>
             <td>{% if item.produto %}{{ item.produto.peso|floatformat:'2g' }}{% else %}-{% endif %}</td>
@@ -114,7 +117,15 @@
           <tr>
             <td>{{ mov.data }}</td>
             <td>{{ mov.item.nome }}</td>
-            <td>{% if mov.item.produto %}{{ mov.item.produto.get_categoria_display }}{% else %}-{% endif %}</td>
+            <td>
+              {% if mov.item.produto and mov.item.produto.subcategoria %}
+                {{ mov.item.produto.subcategoria.nome }}
+              {% elif mov.item.produto %}
+                -
+              {% else %}
+                -
+              {% endif %}
+            </td>
             <td>{{ mov.get_tipo_display }}</td>
             <td>{{ mov.quantidade|floatformat:2 }}</td>
             <td>{{ mov.criado_por.username }}</td>
@@ -219,6 +230,88 @@
 <script>
 var categoriasJson = {{ categorias_json|safe }};
 var filtroSubcatAtivo = null;
+var filtroCategoriaAtivo = null;
+var filtroSubcategoriaAtivo = null;
+
+function buildCategoriaSelect() {
+  var $cat = $('#filtroCategoria');
+  $cat.empty();
+  $cat.append('<option value="">Categoria...</option>');
+  if (categoriasJson && categoriasJson.length > 0) {
+    categoriasJson.forEach(function(cat) {
+      $cat.append('<option value="' + cat.id + '">' + cat.nome + '</option>');
+    });
+  }
+}
+
+function buildSubcategoriaSelect(catId) {
+  var $sub = $('#filtroSubcategoria');
+  $sub.empty();
+  $sub.append('<option value="">Subcategoria...</option>');
+  if (!catId) { $sub.hide(); return; }
+  var cat = categoriasJson.find(function(c) { return c.id == catId; });
+  if (cat && cat.subcategorias.length > 0) {
+    cat.subcategorias.forEach(function(sub) {
+      $sub.append('<option value="' + sub.nome + '">' + sub.nome + '</option>');
+    });
+    $sub.show();
+  } else {
+    $sub.hide();
+  }
+}
+
+// Filtro dinâmico na aba Fluxo de Estoque
+
+function aplicarFiltroFluxoEstoque() {
+  var tipo = $('#filtroTipoMov').val();
+  var busca = $('#buscaMov').val().toLowerCase();
+  var dataIni = $('#filtroDataIni').val();
+  var dataFim = $('#filtroDataFim').val();
+  $('#tabelaFluxoEstoque tbody tr').each(function() {
+    var tds = $(this).find('td');
+    var data = tds.eq(0).text().trim();
+    // Normaliza data para yyyy-mm-dd (pega só a parte da data)
+    var dataRow = data.split(' ')[0];
+    var produto = tds.eq(1).text().toLowerCase();
+    var categoria = tds.eq(2).text().toLowerCase();
+    var tipoMov = tds.eq(3).text().toLowerCase();
+    var usuario = tds.eq(5).text().toLowerCase();
+    var show = true;
+    // Filtro tipo
+    if (tipo && tipoMov !== tipo.toLowerCase()) show = false;
+    // Filtro busca
+    if (busca && !(produto.includes(busca) || categoria.includes(busca) || usuario.includes(busca))) show = false;
+    // Filtro data (considera apenas a data, ignora hora)
+    if (dataIni && dataRow < dataIni) show = false;
+    if (dataFim && dataRow > dataFim) show = false;
+    $(this).toggle(show);
+  });
+}
+
+$(document).ready(function() {
+  // Filtro ao digitar/clicar na aba Fluxo de Estoque
+  $('#buscaMov, #filtroTipoMov, #filtroDataIni, #filtroDataFim').on('input change', function() {
+    aplicarFiltroFluxoEstoque();
+  });
+  // Filtro ao digitar no campo de busca
+  $('#buscaItem').on('keyup', function() {
+    aplicarFiltroEstoque();
+  });
+  buildCategoriaSelect();
+  $('#filtroSubcategoria').hide();
+  $('#filtroCategoria').on('change', function() {
+    var catId = $(this).val();
+    filtroCategoriaAtivo = catId;
+    buildSubcategoriaSelect(catId);
+    filtroSubcategoriaAtivo = null;
+    $('#filtroSubcategoria').val('');
+    aplicarFiltroEstoque();
+  });
+  $('#filtroSubcategoria').on('change', function() {
+    filtroSubcategoriaAtivo = $(this).val();
+    aplicarFiltroEstoque();
+  });
+});
 
 // ==========================================
 // WIZARD: Criar linha com select de subcategoria
@@ -314,7 +407,11 @@ $(document).on('click', '.btnSubcatMassa', function() {
     $existing.toggle();
     return;
   }
+  // Evita dupla requisição: marca como carregando antes do AJAX
+  if ($container.find('[data-subcat-loading="' + subcatId + '"]').length) return;
+  $container.append('<div data-subcat-loading="' + subcatId + '"></div>');
   $.get('/estoque/listar-produtos-subcategoria/', {subcategoria_id: subcatId}, function(resp) {
+    $container.find('[data-subcat-loading="' + subcatId + '"]').remove();
     var produtos = resp.produtos || [];
     var html = '<div class="mb-3" data-subcat-loaded="' + subcatId + '">';
     html += '<div class="d-flex align-items-center flex-wrap mb-1 mt-2">';
@@ -368,43 +465,29 @@ $(document).on('click', '.btnAplicarQtdSubcatMassa', function() {
 // ==========================================
 // PILLS DE FILTRO (aba Estoque)
 // ==========================================
-function buildSubcatPills() {
-  var html = '<button class="btn btn-sm btn-secondary me-1 mb-1" id="pillTodos">Todos</button>';
-  if (categoriasJson && categoriasJson.length > 0) {
-    categoriasJson.forEach(function(cat) {
-      cat.subcategorias.forEach(function(sub) {
-        html += '<button class="btn btn-sm btn-outline-secondary me-1 mb-1 pillSubcat" data-subcat="' + sub.nome + '">' +
-          cat.nome + ' \u203a ' + sub.nome + '</button>';
-      });
-    });
-  }
-  $('#filtroSubcatPills').html(html);
-}
-
-$(document).on('click', '#pillTodos', function() {
-  $('#filtroSubcatPills button').removeClass('btn-secondary').addClass('btn-outline-secondary');
-  $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
-  filtroSubcatAtivo = null;
-  aplicarFiltroEstoque();
-});
-
-$(document).on('click', '.pillSubcat', function() {
-  filtroSubcatAtivo = $(this).data('subcat');
-  $('#filtroSubcatPills button').removeClass('btn-secondary').addClass('btn-outline-secondary');
-  $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
-  aplicarFiltroEstoque();
-});
 
 function aplicarFiltroEstoque() {
   var sit = $('#filtroSituacao').val();
   var busca = $('#buscaItem').val().toLowerCase();
+  var catId = filtroCategoriaAtivo;
+  var subcatNome = filtroSubcategoriaAtivo;
   $('#tabelaEstoque tbody tr').each(function() {
     var nome = $(this).find('td:nth-child(2)').text().toLowerCase();
     var codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
     var situacao = $(this).find('td:nth-child(7) .badge').text().toLowerCase();
     var subcatRow = ($(this).data('subcategoria') || '').toString();
     var show = true;
-    if (filtroSubcatAtivo && subcatRow !== filtroSubcatAtivo) show = false;
+    if (catId) {
+      var cat = categoriasJson.find(function(c) { return c.id == catId; });
+      var subcats = cat ? cat.subcategorias.map(function(s) { return s.nome; }) : [];
+      if (subcatNome) {
+        // Se subcategoria selecionada, só mostra ela
+        if (subcatRow !== subcatNome) show = false;
+      } else {
+        // Se só categoria, mostra todas subcats da categoria
+        if (subcats.length && subcats.indexOf(subcatRow) === -1) show = false;
+      }
+    }
     if (sit && ((sit === 'critico' && situacao !== 'crítico') || (sit === 'medio' && situacao !== 'médio') || (sit === 'alto' && situacao !== 'alto'))) show = false;
     if (busca && !(nome.includes(busca) || codigo.includes(busca))) show = false;
     $(this).toggle(show);

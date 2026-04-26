@@ -21,17 +21,37 @@
 
     {{ form.as_p }}
 
-    <hr>
+        <hr>
 
-    <h4>Itens</h4>
-    {{ formset.management_form }}
-    {% for form in formset %}
-        <div class="card p-3 mb-2">
-            {{ form.as_p }}
+        <h4>Itens</h4>
+        {{ formset.management_form }}
+        {% for form in formset %}
+                <div class="card p-3 mb-2">
+                        {{ form.as_p }}
+                </div>
+        {% endfor %}
+
+        <h5>Adicionar Matéria-Prima</h5>
+        <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-4">
+                <label>Subcategoria</label>
+                <select id="subcategoria-mp" class="form-select"></select>
+            </div>
+            <div class="col-md-4">
+                <label>Matéria-prima</label>
+                <select id="produto-mp" class="form-select"></select>
+            </div>
+            <div class="col-md-2">
+                <label>Quantidade</label>
+                <input type="number" id="quantidade-mp" class="form-control" min="0" step="0.001">
+            </div>
+            <div class="col-md-2">
+                <button type="button" id="adicionar-mp" class="btn btn-primary w-100">Adicionar</button>
+            </div>
         </div>
-    {% endfor %}
+        <ul id="lista-mp" class="list-group mb-3"></ul>
 
-    <button type="submit" class="btn btn-success">Salvar Orçamento</button>
+        <button type="submit" class="btn btn-success">Salvar Orçamento</button>
 </form>
 {% endblock %}
 
