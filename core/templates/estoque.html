@@ -30,7 +30,17 @@
             <option value="alto">Alto</option>
           </select>
         </div>
-        <div class="col-md-4 offset-md-4">
+        <div class="col-md-4 offset-md-2 d-flex gap-2 justify-content-end align-items-center">
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-printer"></i> Imprimir Relatório
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" id="imprimirRelatorioGeral">Geral (todos os produtos)</a></li>
+              <li><a class="dropdown-item" href="#" id="imprimirRelatorioCategoria">Por Categoria</a></li>
+              <li><a class="dropdown-item" href="#" id="imprimirRelatorioSubcategoria">Por Subcategoria</a></li>
+            </ul>
+          </div>
           <input type="text" id="buscaItem" class="form-control form-control-sm" placeholder="Buscar por nome ou código...">
         </div>
       </div>
@@ -131,6 +141,7 @@
             <td>{{ mov.criado_por.username }}</td>
             <td>{{ mov.observacao }}</td>
             <td>
+              <button class="btn btn-sm btn-outline-primary editar-mov" data-id="{{ mov.id }}">Editar</button>
               <button class="btn btn-sm btn-outline-danger desfazer-mov" data-id="{{ mov.id }}">Desfazer</button>
             </td>
           </tr>
@@ -141,6 +152,163 @@
       </table>
     </div>
 
+  </div>
+</div>
+
+<!-- Modal Selecionar Categoria/Subcategoria para Impressão -->
+<div class="modal fade" id="modalSelecionarGrupoImpressao" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSelecionarGrupoTitulo">Selecionar Grupo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Selecione o grupo para imprimir:</label>
+        <select id="selecionarGrupoSelect" class="form-select"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnConfirmarImpressaoGrupo">Imprimir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ver Movimentações do Produto -->
+<div class="modal fade" id="modalVerMovimentacoes" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Movimentações do Produto: <span id="verMovProdutoNome"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Cards resumo -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <div class="card border-success">
+              <div class="card-body py-2 px-3">
+                <div class="text-muted small">Total de Entradas</div>
+                <div class="fw-bold fs-5 text-success" id="verMovTotalEntradas">0,00</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-danger">
+              <div class="card-body py-2 px-3">
+                <div class="text-muted small">Total de Saídas</div>
+                <div class="fw-bold fs-5 text-danger" id="verMovTotalSaidas">0,00</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-warning">
+              <div class="card-body py-2 px-3">
+                <div class="text-muted small">Total de Perdas</div>
+                <div class="fw-bold fs-5 text-warning" id="verMovTotalPerdas">0,00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Filtro por período -->
+        <div class="row g-2 mb-3 align-items-end">
+          <div class="col-auto">
+            <label class="form-label small mb-1">De</label>
+            <input type="date" id="verMovDataIni" class="form-control form-control-sm">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small mb-1">Até</label>
+            <input type="date" id="verMovDataFim" class="form-control form-control-sm">
+          </div>
+          <div class="col-auto">
+            <button type="button" class="btn btn-sm btn-primary" id="btnFiltrarVerMov">Filtrar</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLimparFiltroVerMov">Limpar</button>
+          </div>
+        </div>
+        <!-- Tabela -->
+        <table class="table table-striped table-hover align-middle" id="tabelaVerMovimentacoes">
+          <thead class="table-light">
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Quantidade</th>
+              <th>Usuário</th>
+              <th>Observação</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="verMovSemRegistros" class="text-center text-muted" style="display:none">Nenhuma movimentação encontrada.</div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between align-items-center">
+        <div class="d-flex gap-2">
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-printer"></i> Imprimir Relatório
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-tipo-impr="geral">Geral (todos)</a></li>
+              <li><a class="dropdown-item" href="#" data-tipo-impr="entrada">Somente Entradas</a></li>
+              <li><a class="dropdown-item" href="#" data-tipo-impr="saida">Somente Saídas</a></li>
+              <li><a class="dropdown-item" href="#" data-tipo-impr="perda">Somente Perdas</a></li>
+            </ul>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Movimentação -->
+<div class="modal fade" id="modalEditarMov" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form id="formEditarMov">{% csrf_token %}
+        <input type="hidden" id="editarMovId">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Movimentação de Estoque</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Tipo -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de Movimentação</label>
+            <div class="btn-group" role="group">
+              <input type="radio" class="btn-check" name="editar_wizard_tipo" id="editar-tipo-entrada" value="entrada" autocomplete="off" checked>
+              <label class="btn btn-outline-success" for="editar-tipo-entrada">Entrada</label>
+              <input type="radio" class="btn-check" name="editar_wizard_tipo" id="editar-tipo-saida" value="saida" autocomplete="off">
+              <label class="btn btn-outline-danger" for="editar-tipo-saida">Saída</label>
+            </div>
+          </div>
+          <hr>
+          <!-- Produtos -->
+          <div class="mb-1 d-flex align-items-center justify-content-between">
+            <label class="form-label fw-semibold mb-0">Produtos</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnEditarAdicionarProduto">+ Adicionar Produto</button>
+          </div>
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered align-middle" id="editarWizardTabelaProdutos">
+              <thead class="table-light">
+                <tr>
+                  <th>Subcategoria</th>
+                  <th>Produto</th>
+                  <th>Estoque Atual</th>
+                  <th>Quantidade</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -496,8 +664,8 @@ function aplicarFiltroEstoque() {
 
 $(document).ready(function() {
 
-  // Construir pills de subcategoria
-  buildSubcatPills();
+  // Construir select de categoria
+  buildCategoriaSelect();
 
   // Abrir modal
   $('#btnNovoItemFluxo').on('click', function() {
@@ -624,6 +792,295 @@ $(document).ready(function() {
         else { alert(data.mensagem || 'Erro ao desfazer lançamento.'); }
       });
     }
+  });
+
+  // Ver movimentações do produto
+  var _verMovDados = [];
+
+  function renderVerMov(movs) {
+    var $tbody = $('#tabelaVerMovimentacoes tbody');
+    $tbody.empty();
+    $('#verMovSemRegistros').hide();
+    var totalEntradas = 0, totalSaidas = 0, totalPerdas = 0;
+    if (movs.length === 0) {
+      $('#verMovSemRegistros').show();
+    } else {
+      movs.forEach(function(m) {
+        var tipoBadge = m.tipo === 'entrada'
+          ? '<span class="badge bg-success">Entrada</span>'
+          : m.tipo === 'saida'
+            ? '<span class="badge bg-danger">Saída</span>'
+            : '<span class="badge bg-secondary">Ajuste</span>';
+        var qtd = parseFloat(m.quantidade);
+        if (m.tipo === 'entrada') totalEntradas += qtd;
+        else if (m.tipo === 'saida') {
+          totalSaidas += qtd;
+          if ((m.observacao || '').toLowerCase().includes('perda')) totalPerdas += qtd;
+        }
+        $tbody.append('<tr><td>' + m.data + '</td><td>' + tipoBadge + '</td><td>' + qtd.toFixed(2) + '</td><td>' + (m.usuario || '-') + '</td><td>' + (m.observacao || '-') + '</td></tr>');
+      });
+    }
+    $('#verMovTotalEntradas').text(totalEntradas.toFixed(2).replace('.', ','));
+    $('#verMovTotalSaidas').text(totalSaidas.toFixed(2).replace('.', ','));
+    $('#verMovTotalPerdas').text(totalPerdas.toFixed(2).replace('.', ','));
+  }
+
+  $(document).on('click', '.btnVerMovimentacoes', function() {
+    var itemId = $(this).data('id');
+    var produtoNome = $(this).closest('tr').find('td:nth-child(2)').text().trim();
+    $('#verMovProdutoNome').text(produtoNome);
+    $('#verMovDataIni').val('');
+    $('#verMovDataFim').val('');
+    $.get('/estoque/item/' + itemId + '/movimentacoes/', function(data) {
+      _verMovDados = data.movimentacoes || [];
+      renderVerMov(_verMovDados);
+      $('#modalVerMovimentacoes').modal('show');
+    });
+  });
+
+  $('#btnFiltrarVerMov').on('click', function() {
+    var ini = $('#verMovDataIni').val();
+    var fim = $('#verMovDataFim').val();
+    var filtrado = _verMovDados.filter(function(m) {
+      if (ini && m.data < ini) return false;
+      if (fim && m.data > fim) return false;
+      return true;
+    });
+    renderVerMov(filtrado);
+  });
+
+  $('#btnLimparFiltroVerMov').on('click', function() {
+    $('#verMovDataIni').val('');
+    $('#verMovDataFim').val('');
+    renderVerMov(_verMovDados);
+  });
+
+  // Impressão do relatório de movimentações
+  $(document).on('click', '[data-tipo-impr]', function(e) {
+    e.preventDefault();
+    var tipoImpr = $(this).data('tipo-impr');
+    var produto = $('#verMovProdutoNome').text();
+    var ini = $('#verMovDataIni').val();
+    var fim = $('#verMovDataFim').val();
+
+    var dados = _verMovDados.filter(function(m) {
+      if (ini && m.data < ini) return false;
+      if (fim && m.data > fim) return false;
+      if (tipoImpr === 'entrada') return m.tipo === 'entrada';
+      if (tipoImpr === 'saida') return m.tipo === 'saida';
+      if (tipoImpr === 'perda') return m.tipo === 'saida' && (m.observacao || '').toLowerCase().includes('perda');
+      return true;
+    });
+
+    var titulo = tipoImpr === 'geral' ? 'Relatório Geral'
+      : tipoImpr === 'entrada' ? 'Relatório de Entradas'
+      : tipoImpr === 'saida' ? 'Relatório de Saídas'
+      : 'Relatório de Perdas';
+
+    var totalEntradas = 0, totalSaidas = 0, totalPerdas = 0;
+    var linhas = '';
+    dados.forEach(function(m) {
+      var qtd = parseFloat(m.quantidade);
+      var tipo = m.tipo === 'entrada' ? 'Entrada' : m.tipo === 'saida' ? 'Saída' : 'Ajuste';
+      if (m.tipo === 'entrada') totalEntradas += qtd;
+      else if (m.tipo === 'saida') { totalSaidas += qtd; if ((m.observacao||'').toLowerCase().includes('perda')) totalPerdas += qtd; }
+      linhas += '<tr><td>' + m.data + '</td><td>' + tipo + '</td><td>' + qtd.toFixed(2) + '</td><td>' + (m.usuario||'-') + '</td><td>' + (m.observacao||'-') + '</td></tr>';
+    });
+
+    var periodo = (ini || fim) ? ('<br><small>Período: ' + (ini||'início') + ' até ' + (fim||'hoje') + '</small>') : '';
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + titulo + '</title>'
+      + '<style>body{font-family:Arial,sans-serif;font-size:13px;padding:20px} h2,h3{margin:4px 0} table{width:100%;border-collapse:collapse;margin-top:12px} th,td{border:1px solid #ccc;padding:6px 8px;text-align:left} th{background:#f0f0f0} .resumo{display:flex;gap:24px;margin:12px 0} .card-r{border:1px solid #ccc;border-radius:6px;padding:8px 16px;min-width:140px} .label{font-size:11px;color:#666} .val{font-size:16px;font-weight:bold} .entrada{color:green} .saida{color:red} .perda{color:orange} @media print{button{display:none}}</style>'
+      + '</head><body>'
+      + '<h2>' + titulo + '</h2>'
+      + '<h3>Produto: ' + produto + '</h3>' + periodo
+      + '<div class="resumo">'
+      + '<div class="card-r"><div class="label">Total Entradas</div><div class="val entrada">' + totalEntradas.toFixed(2) + '</div></div>'
+      + '<div class="card-r"><div class="label">Total Saídas</div><div class="val saida">' + totalSaidas.toFixed(2) + '</div></div>'
+      + '<div class="card-r"><div class="label">Total Perdas</div><div class="val perda">' + totalPerdas.toFixed(2) + '</div></div>'
+      + '</div>'
+      + '<table><thead><tr><th>Data</th><th>Tipo</th><th>Quantidade</th><th>Usuário</th><th>Observação</th></tr></thead><tbody>' + linhas + '</tbody></table>'
+      + '<script>window.onload=function(){window.print();}<\/script></body></html>';
+
+    var w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+  });
+
+  // =============================================
+  // RELATÓRIOS DA ABA ESTOQUE
+  // =============================================
+  function coletarLinhasEstoque() {
+    var linhas = [];
+    $('#tabelaEstoque tbody tr:visible').each(function() {
+      var tds = $(this).find('td');
+      if (tds.length < 7) return;
+      linhas.push({
+        codigo:      tds.eq(0).text().trim(),
+        nome:        tds.eq(1).text().trim(),
+        peso:        tds.eq(2).text().trim(),
+        unidade:     tds.eq(3).text().trim(),
+        subcategoria: tds.eq(4).text().trim(),
+        quantidade:  tds.eq(5).text().trim(),
+        situacao:    tds.eq(6).text().trim(),
+      });
+    });
+    return linhas;
+  }
+
+  function gerarHtmlRelatorioEstoque(titulo, linhas, agrupar) {
+    var estilo = '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}'
+      + 'h2,h3{margin:4px 0} table{width:100%;border-collapse:collapse;margin-top:10px;margin-bottom:20px}'
+      + 'th,td{border:1px solid #ccc;padding:5px 8px;text-align:left}'
+      + 'th{background:#f0f0f0} .grupo{margin-top:20px;font-weight:bold;font-size:14px;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:6px}'
+      + '.badge-critico{color:#fff;background:#dc3545;padding:2px 6px;border-radius:4px}'
+      + '.badge-medio{color:#000;background:#ffc107;padding:2px 6px;border-radius:4px}'
+      + '.badge-alto{color:#fff;background:#198754;padding:2px 6px;border-radius:4px}'
+      + '@media print{button{display:none}}</style>';
+
+    var cabecalho = '<h2>' + titulo + '</h2>'
+      + '<p style="margin:4px 0;color:#555">Gerado em: ' + new Date().toLocaleDateString('pt-BR') + '</p>';
+
+    function badgeSit(s) {
+      s = s.toLowerCase();
+      if (s.includes('crít')) return '<span class="badge-critico">Crítico</span>';
+      if (s.includes('dio')) return '<span class="badge-medio">Médio</span>';
+      return '<span class="badge-alto">Alto</span>';
+    }
+
+    function tabelaHtml(rows) {
+      var h = '<table><thead><tr><th>Código</th><th>Nome</th><th>Peso</th><th>Unidade</th><th>Subcategoria</th><th>Qtd Atual</th><th>Situação</th></tr></thead><tbody>';
+      rows.forEach(function(r) {
+        h += '<tr><td>' + r.codigo + '</td><td>' + r.nome + '</td><td>' + r.peso + '</td><td>' + r.unidade + '</td><td>' + r.subcategoria + '</td><td>' + r.quantidade + '</td><td>' + badgeSit(r.situacao) + '</td></tr>';
+      });
+      h += '</tbody></table>';
+      return h;
+    }
+
+    var corpo = '';
+    if (!agrupar) {
+      corpo = tabelaHtml(linhas);
+    } else {
+      var grupos = {};
+      linhas.forEach(function(r) {
+        var chave = r[agrupar] || '(Sem ' + agrupar + ')';
+        if (!grupos[chave]) grupos[chave] = [];
+        grupos[chave].push(r);
+      });
+      Object.keys(grupos).sort().forEach(function(g) {
+        corpo += '<div class="grupo">' + g + ' <small style="font-weight:normal;color:#666">(' + grupos[g].length + ' produto(s))</small></div>';
+        corpo += tabelaHtml(grupos[g]);
+      });
+    }
+
+    return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + titulo + '</title>' + estilo + '</head><body>'
+      + cabecalho + corpo
+      + '<script>window.onload=function(){window.print();}<\/script></body></html>';
+  }
+
+  $('#imprimirRelatorioGeral').on('click', function(e) {
+    e.preventDefault();
+    var linhas = coletarLinhasEstoque();
+    var w = window.open('', '_blank');
+    w.document.write(gerarHtmlRelatorioEstoque('Relatório Geral de Estoque', linhas, null));
+    w.document.close();
+  });
+
+  var _tipoGrupoImpressao = null;
+
+  function extrairGruposEstoque(tipo) {
+    var grupos = {};
+    $('#tabelaEstoque tbody tr').each(function() {
+      var tds = $(this).find('td');
+      if (tds.length < 7) return;
+      var subcat = tds.eq(4).text().trim();
+      var catNome = subcat.includes(' - ') ? subcat.split(' - ')[0].trim() : (subcat === '-' ? '(Sem Categoria)' : subcat);
+      var chave = tipo === 'categoria' ? catNome : (subcat === '-' ? '(Sem Subcategoria)' : subcat);
+      if (!grupos[chave]) grupos[chave] = [];
+      grupos[chave].push({
+        codigo: tds.eq(0).text().trim(), nome: tds.eq(1).text().trim(),
+        peso: tds.eq(2).text().trim(), unidade: tds.eq(3).text().trim(),
+        subcategoria: subcat, quantidade: tds.eq(5).text().trim(),
+        situacao: tds.eq(6).text().trim(), categoria: catNome,
+      });
+    });
+    return grupos;
+  }
+
+  $('#imprimirRelatorioCategoria').on('click', function(e) {
+    e.preventDefault();
+    _tipoGrupoImpressao = 'categoria';
+    var grupos = extrairGruposEstoque('categoria');
+    var $sel = $('#selecionarGrupoSelect').empty();
+    Object.keys(grupos).sort().forEach(function(g) {
+      $sel.append('<option value="' + g + '">' + g + ' (' + grupos[g].length + ' produto(s))</option>');
+    });
+    $('#modalSelecionarGrupoTitulo').text('Selecionar Categoria');
+    $('#modalSelecionarGrupoImpressao').modal('show');
+  });
+
+  $('#imprimirRelatorioSubcategoria').on('click', function(e) {
+    e.preventDefault();
+    _tipoGrupoImpressao = 'subcategoria';
+    var grupos = extrairGruposEstoque('subcategoria');
+    var $sel = $('#selecionarGrupoSelect').empty();
+    Object.keys(grupos).sort().forEach(function(g) {
+      $sel.append('<option value="' + g + '">' + g + ' (' + grupos[g].length + ' produto(s))</option>');
+    });
+    $('#modalSelecionarGrupoTitulo').text('Selecionar Subcategoria');
+    $('#modalSelecionarGrupoImpressao').modal('show');
+  });
+
+  $('#btnConfirmarImpressaoGrupo').on('click', function() {
+    var grupoSelecionado = $('#selecionarGrupoSelect').val();
+    var grupos = extrairGruposEstoque(_tipoGrupoImpressao);
+    var linhas = grupos[grupoSelecionado] || [];
+    var titulo = (_tipoGrupoImpressao === 'categoria' ? 'Relatório por Categoria: ' : 'Relatório por Subcategoria: ') + grupoSelecionado;
+    $('#modalSelecionarGrupoImpressao').modal('hide');
+    var w = window.open('', '_blank');
+    w.document.write(gerarHtmlRelatorioEstoque(titulo, linhas, null));
+    w.document.close();
+  });
+
+  // Editar movimentação — abre modal pré-preenchido
+  $(document).on('click', '.editar-mov', function() {
+    var id = $(this).data('id');
+    $.get('/estoque/movimentacao/' + id + '/editar/', function(data) {
+      $('#editarMovId').val(data.id);
+      $('input[name="editar_wizard_tipo"][value="' + data.tipo + '"]').prop('checked', true);
+      var $tbody = $('#editarWizardTabelaProdutos tbody');
+      $tbody.empty();
+      var $row = $(criarLinha('prod', 0));
+      $row.find('.inputProdutoNome').val(data.produto_nome);
+      $row.find('.inputProdutoId').val(data.produto_id || '');
+      $row.find('.inputEstoqueAtual').val(data.estoque_atual);
+      $row.find('[name="prod_quantidade_0"]').val(data.quantidade);
+      if (data.subcategoria_id) {
+        $row.find('.selectSubcategoria').val(data.subcategoria_id);
+      }
+      $tbody.append($row);
+      $('#modalEditarMov').modal('show');
+    });
+  });
+
+  // Adicionar produto no modal de edição
+  $('#btnEditarAdicionarProduto').on('click', function() {
+    var idx = $('#editarWizardTabelaProdutos tbody tr').length;
+    $('#editarWizardTabelaProdutos tbody').append(criarLinha('prod', idx));
+  });
+
+  // Submissão do form de edição
+  $('#formEditarMov').on('submit', function(e) {
+    e.preventDefault();
+    var movId = $('#editarMovId').val();
+    $.post('/estoque/movimentacao/' + movId + '/editar/', $(this).serialize(), function(resp) {
+      if (resp.status === 'ok') {
+        $('#modalEditarMov').modal('hide');
+        location.reload();
+      } else {
+        alert(resp.mensagem || 'Erro ao salvar.');
+      }
+    });
   });
 
 });

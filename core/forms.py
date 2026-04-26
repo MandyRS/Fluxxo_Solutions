@@ -1,5 +1,5 @@
 from django import forms
-from .models import Orcamento, ItemOrcamento, Empresa
+from .models import Orcamento, ItemOrcamento, Empresa, MovimentacaoEstoque
 
 class OrcamentoForm(forms.ModelForm):
     class Meta:
@@ -55,4 +55,14 @@ class LancamentoBancarioForm(forms.ModelForm):
         widgets = {
             'data': forms.DateInput(attrs={'type': 'date'}),
             'valor': forms.NumberInput(attrs={'step': '0.01'}),
+        }
+
+class MovimentacaoEstoqueForm(forms.ModelForm):
+    class Meta:
+        model = MovimentacaoEstoque
+        fields = ['quantidade', 'data', 'observacao']
+        widgets = {
+            'data': forms.DateInput(attrs={'type': 'date'}),
+            'quantidade': forms.NumberInput(attrs={'step': '0.01'}),
+            'observacao': forms.TextInput(),
         }

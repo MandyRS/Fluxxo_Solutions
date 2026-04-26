@@ -1,4 +1,3 @@
-
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import UserEmpresa
 from django.contrib.auth import logout
@@ -19,10 +18,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import logout
 from .models import (
     Cliente, Produto, Servico, Orcamento, Banco, LancamentoBancario,
-    ItemEstoque, MovimentacaoEstoque
+    ItemEstoque, MovimentacaoEstoque, Fornecedor, EntradaComercial, ItemEntradaComercial
 )
 from .forms import (
-    ItemOrcamentoForm, BancoForm, LancamentoBancarioForm
+    ItemOrcamentoForm, BancoForm, LancamentoBancarioForm,
+    MovimentacaoEstoqueForm
 )
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -272,14 +272,14 @@ def criar_cliente_ajax(request):
 
     cliente = Cliente.objects.create(
         empresa=empresa,
-        razao_social=request.POST.get('razao_social'),
-        nome_fantasia=request.POST.get('nome_fantasia'),
-        cpf_cnpj=request.POST.get('cpf_cnpj'),
-        telefone=request.POST.get('telefone'),
-        email=request.POST.get('email'),
-        endereco=request.POST.get('endereco'),
-        cidade_uf=request.POST.get('cidade_uf'),
-        cep=request.POST.get('cep')
+        razao_social=request.POST.get('razao_social') or '',
+        nome_fantasia=request.POST.get('nome_fantasia') or '',
+        cpf_cnpj=request.POST.get('cpf_cnpj') or '',
+        telefone=request.POST.get('telefone') or '',
+        email=request.POST.get('email') or '',
+        endereco=request.POST.get('endereco') or '',
+        cidade_uf=request.POST.get('cidade_uf') or '',
+        cep=request.POST.get('cep') or '',
     )
 
     return JsonResponse({
@@ -325,14 +325,14 @@ def editar_cliente(request, id):
         })
     elif request.method == 'POST':
         # atualizar os dados
-        cliente.razao_social = request.POST.get('razao_social')
-        cliente.nome_fantasia = request.POST.get('nome_fantasia')
-        cliente.cpf_cnpj = request.POST.get('cpf_cnpj')
-        cliente.telefone = request.POST.get('telefone')
-        cliente.email = request.POST.get('email')
-        cliente.endereco = request.POST.get('endereco')
-        cliente.cidade_uf = request.POST.get('cidade_uf')
-        cliente.cep = request.POST.get('cep')
+        cliente.razao_social = request.POST.get('razao_social') or ''
+        cliente.nome_fantasia = request.POST.get('nome_fantasia') or ''
+        cliente.cpf_cnpj = request.POST.get('cpf_cnpj') or ''
+        cliente.telefone = request.POST.get('telefone') or ''
+        cliente.email = request.POST.get('email') or ''
+        cliente.endereco = request.POST.get('endereco') or ''
+        cliente.cidade_uf = request.POST.get('cidade_uf') or ''
+        cliente.cep = request.POST.get('cep') or ''
         cliente.save()
         return JsonResponse({'status': 'ok', 'cliente': {
             'id': cliente.id,
@@ -675,6 +675,21 @@ def criar_orcamento(request):
                 quantidade=qtd,
                 preco_unitario=valor
             )
+            # Baixa no estoque para produtos
+            if tipo == 'produto' and ref:
+                from datetime import date as _dt
+                item_est, _ = ItemEstoque.objects.get_or_create(
+                    empresa=empresa, produto=ref,
+                    defaults={'nome': ref.nome, 'quantidade': 0, 'unidade': ref.unidade}
+                )
+                item_est.quantidade = float(item_est.quantidade) - qtd
+                item_est.save()
+                MovimentacaoEstoque.objects.create(
+                    item=item_est, tipo='saida', quantidade=qtd,
+                    data=_dt.today(),
+                    observacao=f'Venda - Orca #{orcamento.numero}',
+                    criado_por=request.user,
+                )
 
         orcamento.save()
         return JsonResponse({'status': 'ok'})
@@ -697,6 +712,18 @@ def editar_orcamento(request, orcamento_id):
         itens = json.loads(data.get('itens', '[]'))
         desconto = float(data.get('desconto', 0) or 0)
 
+        empresa = get_empresa_da_sessao(request)
+
+        # Reverter baixas de estoque dos itens antigos
+        for item_antigo in ItemOrcamento.objects.filter(orcamento=orcamento).select_related('produto'):
+            if item_antigo.produto:
+                try:
+                    item_est = ItemEstoque.objects.get(empresa=empresa, produto=item_antigo.produto)
+                    item_est.quantidade = float(item_est.quantidade) + float(item_antigo.quantidade)
+                    item_est.save()
+                except ItemEstoque.DoesNotExist:
+                    pass
+
         orcamento.cliente_id = data.get('cliente')
         orcamento.solicitante = data.get('solicitante')
         orcamento.previsao_entrega = data.get('previsao_entrega') or None
@@ -708,8 +735,6 @@ def editar_orcamento(request, orcamento_id):
 
         # Limpa itens antigos
         ItemOrcamento.objects.filter(orcamento=orcamento).delete()
-
-        empresa = get_empresa_da_sessao(request)
         total = 0
         for item in itens:
             tipo = item.get('tipo')
@@ -730,6 +755,21 @@ def editar_orcamento(request, orcamento_id):
                 quantidade=qtd,
                 preco_unitario=valor
             )
+            # Nova baixa no estoque (editar_orcamento)
+            if tipo == 'produto' and ref:
+                from datetime import date as _dt2
+                item_est2, _ = ItemEstoque.objects.get_or_create(
+                    empresa=empresa, produto=ref,
+                    defaults={'nome': ref.nome, 'quantidade': 0, 'unidade': ref.unidade}
+                )
+                item_est2.quantidade = float(item_est2.quantidade) - qtd
+                item_est2.save()
+                MovimentacaoEstoque.objects.create(
+                    item=item_est2, tipo='saida', quantidade=qtd,
+                    data=_dt2.today(),
+                    observacao=f'Venda - Orca #{orcamento.numero}',
+                    criado_por=request.user,
+                )
 
         orcamento.save()
         return JsonResponse({'status': 'ok'})
@@ -1046,6 +1086,7 @@ def configuracoes(request):
         'rotulos_list': get_produtos_list('rotulo'),
         'servicos_list': Servico.objects.filter(empresa=empresa),
         'bancos_list': Banco.objects.filter(empresa=empresa),
+        'fornecedores_list': Fornecedor.objects.filter(empresa=empresa),
         'categorias_list': CategoriaProduto.objects.filter(empresa=empresa)
             .prefetch_related(
                 Prefetch(
@@ -1539,6 +1580,7 @@ def listar_produtos_categoria(request):
             'estoque': str(item.quantidade) if item else '0',
             'unidade': p.unidade,
             'subcategoria': p.subcategoria or '',
+            'preco_unitario': float(p.preco_unitario),
         })
     return JsonResponse({'produtos': lista})
 
@@ -1562,6 +1604,7 @@ def listar_produtos_subcategoria(request):
             'codigo': p.codigo,
             'estoque': str(item.quantidade) if item else '0',
             'unidade': p.unidade,
+            'preco_unitario': float(p.preco_unitario),
         })
     return JsonResponse({'produtos': lista})
 from django.contrib.auth.decorators import login_required
@@ -1648,3 +1691,464 @@ def listar_materias_primas_por_subcategoria(request):
         })
 
     return JsonResponse({'status': 'ok', 'subcategorias': resultado})
+
+
+@login_required
+def movimentacoes_por_item(request, id):
+    empresa = get_empresa_da_sessao(request)
+    item = get_object_or_404(ItemEstoque, id=id, empresa=empresa)
+    movs = MovimentacaoEstoque.objects.filter(item=item).order_by('-data', '-id')
+    data = []
+    for m in movs:
+        data.append({
+            'id': m.id,
+            'tipo': m.tipo,
+            'quantidade': str(m.quantidade),
+            'data': str(m.data),
+            'usuario': m.criado_por.username if m.criado_por else '-',
+            'observacao': m.observacao or '',
+        })
+    return JsonResponse({'movimentacoes': data})
+
+
+@login_required
+def editar_movimentacao_estoque(request, id):
+    empresa = get_empresa_da_sessao(request)
+    mov = get_object_or_404(MovimentacaoEstoque, id=id, item__empresa=empresa)
+
+    if request.method == 'GET':
+        return JsonResponse({
+            'id': mov.id,
+            'tipo': mov.tipo,
+            'quantidade': str(mov.quantidade),
+            'data': str(mov.data),
+            'observacao': mov.observacao,
+            'produto_id': mov.item.produto.id if mov.item.produto else None,
+            'produto_nome': mov.item.nome,
+            'estoque_atual': str(mov.item.quantidade),
+            'subcategoria_id': mov.item.produto.subcategoria.id if mov.item.produto and mov.item.produto.subcategoria else None,
+        })
+
+    elif request.method == 'POST':
+        from datetime import date as dt_date
+        tipo = request.POST.get('editar_wizard_tipo', mov.tipo)
+
+        # Row 0 — atualiza a movimentação original
+        qtd_0_raw = request.POST.get('prod_quantidade_0')
+        if qtd_0_raw:
+            try:
+                qtd_0 = float(qtd_0_raw)
+                item = mov.item
+                # Reverte o efeito anterior no estoque
+                if mov.tipo == 'entrada':
+                    item.quantidade = float(item.quantidade) - float(mov.quantidade)
+                elif mov.tipo == 'saida':
+                    item.quantidade = float(item.quantidade) + float(mov.quantidade)
+                # Aplica o novo efeito
+                if tipo == 'entrada':
+                    item.quantidade = float(item.quantidade) + qtd_0
+                elif tipo == 'saida':
+                    item.quantidade = float(item.quantidade) - qtd_0
+                item.save()
+                mov.tipo = tipo
+                mov.quantidade = qtd_0
+                mov.save()
+            except (ValueError, TypeError):
+                pass
+
+        # Rows 1+ — cria novas movimentações para itens adicionais
+        indices = set()
+        for key in request.POST:
+            if key.startswith('prod_produto_id_'):
+                try:
+                    idx = int(key.split('prod_produto_id_')[1])
+                    if idx > 0:
+                        indices.add(idx)
+                except ValueError:
+                    pass
+
+        for idx in sorted(indices):
+            produto_id = request.POST.get(f'prod_produto_id_{idx}', '').strip()
+            qtd_str = request.POST.get(f'prod_quantidade_{idx}', '0').strip()
+            if not produto_id:
+                continue
+            try:
+                qtd = float(qtd_str)
+            except ValueError:
+                continue
+            if qtd <= 0:
+                continue
+            try:
+                p = Produto.objects.get(id=produto_id, empresa=empresa)
+            except Produto.DoesNotExist:
+                continue
+            item_new, _ = ItemEstoque.objects.get_or_create(
+                empresa=empresa, produto=p,
+                defaults={'nome': p.nome, 'quantidade': 0, 'unidade': p.unidade}
+            )
+            if tipo == 'entrada':
+                item_new.quantidade = float(item_new.quantidade) + qtd
+            elif tipo == 'saida':
+                item_new.quantidade = float(item_new.quantidade) - qtd
+            item_new.save()
+            MovimentacaoEstoque.objects.create(
+                item=item_new, tipo=tipo, quantidade=qtd,
+                data=dt_date.today(), observacao='Adicionado via edição',
+                criado_por=request.user,
+            )
+
+        return JsonResponse({'status': 'ok'})
+
+    return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+
+
+# =============================================
+# COMERCIAL
+# =============================================
+
+@login_required
+def comercial(request):
+    empresa = get_empresa_da_sessao(request)
+    from .models import CategoriaProduto, SubcategoriaProduto
+    orcamentos = Orcamento.objects.filter(empresa=empresa).order_by('-id')
+    entradas = EntradaComercial.objects.filter(empresa=empresa).prefetch_related('itens').select_related('fornecedor', 'criado_por')
+    fornecedores = Fornecedor.objects.filter(empresa=empresa)
+    categorias = CategoriaProduto.objects.filter(empresa=empresa).prefetch_related('subcategorias')
+    return render(request, 'comercial.html', {
+        'orcamentos': orcamentos,
+        'entradas': entradas,
+        'fornecedores': fornecedores,
+        'categorias': categorias,
+    })
+
+
+@login_required
+def criar_entrada_comercial(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+    empresa = get_empresa_da_sessao(request)
+    data_str = request.POST.get('data', '')
+    fornecedor_id = request.POST.get('fornecedor_id', '').strip()
+    observacao = request.POST.get('observacao', '').strip()
+    itens_json = request.POST.get('itens', '[]')
+    try:
+        itens = json.loads(itens_json)
+    except (ValueError, TypeError):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Itens inválidos.'})
+    if not data_str or not itens:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Data e itens são obrigatórios.'})
+    from datetime import date as dt_date
+    try:
+        data = dt_date.fromisoformat(data_str)
+    except ValueError:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Data inválida.'})
+    fornecedor = None
+    if fornecedor_id:
+        try:
+            fornecedor = Fornecedor.objects.get(id=fornecedor_id, empresa=empresa)
+        except Fornecedor.DoesNotExist:
+            pass
+    entrada = EntradaComercial.objects.create(
+        empresa=empresa,
+        fornecedor=fornecedor,
+        data=data,
+        observacao=observacao,
+        criado_por=request.user,
+    )
+    for item_data in itens:
+        produto_id = item_data.get('produto_id', '').strip()
+        qtd_str = str(item_data.get('quantidade', '0'))
+        preco_str = str(item_data.get('preco_unitario', '0'))
+        if not produto_id:
+            continue
+        try:
+            qtd = float(qtd_str)
+            preco = float(preco_str)
+        except (ValueError, TypeError):
+            continue
+        if qtd <= 0:
+            continue
+        try:
+            produto = Produto.objects.get(id=produto_id, empresa=empresa)
+        except Produto.DoesNotExist:
+            continue
+        ItemEntradaComercial.objects.create(
+            entrada=entrada, produto=produto, quantidade=qtd, preco_unitario=preco
+        )
+        # Atualiza estoque
+        item_estoque, _ = ItemEstoque.objects.get_or_create(
+            empresa=empresa, produto=produto,
+            defaults={'nome': produto.nome, 'quantidade': 0, 'unidade': produto.unidade}
+        )
+        item_estoque.quantidade = float(item_estoque.quantidade) + qtd
+        if preco > 0:
+            item_estoque.preco_custo = preco
+        item_estoque.save()
+        MovimentacaoEstoque.objects.create(
+            item=item_estoque,
+            tipo='entrada',
+            quantidade=qtd,
+            data=data,
+            observacao=f'Entrada Comercial #{entrada.id}' + (f' - {fornecedor.nome}' if fornecedor else ''),
+            criado_por=request.user,
+        )
+    return JsonResponse({'status': 'ok'})
+
+
+@login_required
+def detalhe_entrada_comercial(request, id):
+    empresa = get_empresa_da_sessao(request)
+    entrada = get_object_or_404(EntradaComercial, id=id, empresa=empresa)
+    itens = entrada.itens.select_related('produto').all()
+    return JsonResponse({
+        'entrada': {
+            'id': entrada.id,
+            'data': entrada.data.strftime('%d/%m/%Y'),
+            'data_iso': entrada.data.isoformat(),
+            'fornecedor': entrada.fornecedor.nome if entrada.fornecedor else None,
+            'fornecedor_id': entrada.fornecedor.id if entrada.fornecedor else None,
+            'observacao': entrada.observacao,
+            'itens': [
+                {
+                    'produto': i.produto.nome,
+                    'produto_id': i.produto.id,
+                    'quantidade': str(i.quantidade),
+                    'preco_unitario': str(i.preco_unitario),
+                }
+                for i in itens
+            ],
+        }
+    })
+
+
+@login_required
+def excluir_entrada_comercial(request, id):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+    empresa = get_empresa_da_sessao(request)
+    entrada = get_object_or_404(EntradaComercial, id=id, empresa=empresa)
+    # Reverter estoque
+    for item_data in entrada.itens.select_related('produto').all():
+        try:
+            item_estoque = ItemEstoque.objects.get(empresa=empresa, produto=item_data.produto)
+            item_estoque.quantidade = float(item_estoque.quantidade) - float(item_data.quantidade)
+            item_estoque.save()
+            # Remover movimentação correspondente
+            MovimentacaoEstoque.objects.filter(
+                item=item_estoque,
+                tipo='entrada',
+                observacao__startswith=f'Entrada Comercial #{entrada.id}',
+            ).delete()
+        except ItemEstoque.DoesNotExist:
+            pass
+    entrada.delete()
+    return JsonResponse({'status': 'ok'})
+
+
+@login_required
+def editar_entrada_comercial(request, id):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+    empresa = get_empresa_da_sessao(request)
+    entrada = get_object_or_404(EntradaComercial, id=id, empresa=empresa)
+
+    data_str = request.POST.get('data', '').strip()
+    fornecedor_id = request.POST.get('fornecedor_id', '').strip()
+    observacao = request.POST.get('observacao', '').strip()
+    itens_json = request.POST.get('itens', '[]')
+    try:
+        novos_itens = json.loads(itens_json)
+    except (ValueError, TypeError):
+        return JsonResponse({'status': 'erro', 'mensagem': 'Itens inválidos.'})
+
+    from datetime import date as dt_date
+    try:
+        nova_data = dt_date.fromisoformat(data_str)
+    except ValueError:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Data inválida.'})
+
+    # 1. Reverter estoque e movimentações dos itens antigos
+    for item_data in entrada.itens.select_related('produto').all():
+        try:
+            item_est = ItemEstoque.objects.get(empresa=empresa, produto=item_data.produto)
+            item_est.quantidade = float(item_est.quantidade) - float(item_data.quantidade)
+            item_est.save()
+            MovimentacaoEstoque.objects.filter(
+                item=item_est,
+                tipo='entrada',
+                observacao__startswith=f'Entrada Comercial #{entrada.id}',
+            ).delete()
+        except ItemEstoque.DoesNotExist:
+            pass
+
+    # 2. Atualizar campos da entrada
+    fornecedor = None
+    if fornecedor_id:
+        try:
+            fornecedor = Fornecedor.objects.get(id=fornecedor_id, empresa=empresa)
+        except Fornecedor.DoesNotExist:
+            pass
+    entrada.fornecedor = fornecedor
+    entrada.data = nova_data
+    entrada.observacao = observacao
+    entrada.save()
+
+    # 3. Remover itens antigos e criar novos
+    entrada.itens.all().delete()
+    for item_data in novos_itens:
+        produto_id = str(item_data.get('produto_id', '')).strip()
+        try:
+            qtd = float(item_data.get('quantidade', 0))
+            preco = float(item_data.get('preco_unitario', 0))
+        except (ValueError, TypeError):
+            continue
+        if not produto_id or qtd <= 0:
+            continue
+        try:
+            produto = Produto.objects.get(id=produto_id, empresa=empresa)
+        except Produto.DoesNotExist:
+            continue
+        ItemEntradaComercial.objects.create(
+            entrada=entrada, produto=produto, quantidade=qtd, preco_unitario=preco
+        )
+        item_est, _ = ItemEstoque.objects.get_or_create(
+            empresa=empresa, produto=produto,
+            defaults={'nome': produto.nome, 'quantidade': 0, 'unidade': produto.unidade}
+        )
+        item_est.quantidade = float(item_est.quantidade) + qtd
+        if preco > 0:
+            item_est.preco_custo = preco
+        item_est.save()
+        MovimentacaoEstoque.objects.create(
+            item=item_est, tipo='entrada', quantidade=qtd, data=nova_data,
+            observacao=f'Entrada Comercial #{entrada.id}' + (f' - {fornecedor.nome}' if fornecedor else ''),
+            criado_por=request.user,
+        )
+    return JsonResponse({'status': 'ok'})
+
+
+@login_required
+def relatorio_entradas_fornecedor(request):
+    empresa = get_empresa_da_sessao(request)
+    data_ini = request.GET.get('data_ini', '')
+    data_fim = request.GET.get('data_fim', '')
+    fornecedor_id = request.GET.get('fornecedor_id', '')
+
+    from datetime import date as dt_date
+    from django.db.models import Sum, Count
+
+    entradas = EntradaComercial.objects.filter(empresa=empresa)
+    if data_ini:
+        try:
+            entradas = entradas.filter(data__gte=dt_date.fromisoformat(data_ini))
+        except ValueError:
+            pass
+    if data_fim:
+        try:
+            entradas = entradas.filter(data__lte=dt_date.fromisoformat(data_fim))
+        except ValueError:
+            pass
+    if fornecedor_id:
+        entradas = entradas.filter(fornecedor_id=fornecedor_id)
+
+    # Agrupado por fornecedor
+    from .models import ItemEntradaComercial
+    resultado = []
+    fornecedores_ids = entradas.values_list('fornecedor_id', flat=True).distinct()
+    for forn_id in fornecedores_ids:
+        ents = entradas.filter(fornecedor_id=forn_id)
+        itens = ItemEntradaComercial.objects.filter(entrada__in=ents)
+        valor_total = sum(float(i.quantidade) * float(i.preco_unitario) for i in itens)
+        qtd_total = sum(float(i.quantidade) for i in itens)
+        if forn_id:
+            try:
+                forn = Fornecedor.objects.get(id=forn_id)
+                nome_forn = forn.nome
+            except Fornecedor.DoesNotExist:
+                nome_forn = 'Desconhecido'
+        else:
+            nome_forn = 'Sem Fornecedor'
+        # Detalhes por entrada
+        detalhes = []
+        for ent in ents.order_by('-data'):
+            itens_ent = ItemEntradaComercial.objects.filter(entrada=ent).select_related('produto')
+            valor_ent = sum(float(i.quantidade) * float(i.preco_unitario) for i in itens_ent)
+            detalhes.append({
+                'id': ent.id,
+                'data': ent.data.strftime('%d/%m/%Y'),
+                'observacao': ent.observacao or '',
+                'num_itens': itens_ent.count(),
+                'valor': round(valor_ent, 2),
+                'itens': [
+                    {
+                        'produto': i.produto.nome,
+                        'quantidade': float(i.quantidade),
+                        'preco_unitario': float(i.preco_unitario),
+                        'total': round(float(i.quantidade) * float(i.preco_unitario), 2),
+                    }
+                    for i in itens_ent
+                ],
+            })
+        resultado.append({
+            'fornecedor_id': forn_id,
+            'fornecedor': nome_forn,
+            'num_entradas': ents.count(),
+            'qtd_total': round(qtd_total, 2),
+            'valor_total': round(valor_total, 2),
+            'detalhes': detalhes,
+        })
+
+    resultado.sort(key=lambda x: x['valor_total'], reverse=True)
+    return JsonResponse({'status': 'ok', 'resultado': resultado})
+
+
+# =============================================
+# FORNECEDOR (AJAX)
+# =============================================
+
+@login_required
+def criar_fornecedor_ajax(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+    empresa = get_empresa_da_sessao(request)
+    nome = request.POST.get('nome', '').strip()
+    if not nome:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Nome é obrigatório.'})
+    f = Fornecedor.objects.create(
+        empresa=empresa,
+        nome=nome,
+        cnpj_cpf=request.POST.get('cnpj_cpf', '').strip(),
+        telefone=request.POST.get('telefone', '').strip(),
+        email=request.POST.get('email', '').strip(),
+        endereco=request.POST.get('endereco', '').strip(),
+    )
+    return JsonResponse({'status': 'ok', 'id': f.id, 'nome': f.nome})
+
+
+@login_required
+def editar_fornecedor_ajax(request, id):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+    empresa = get_empresa_da_sessao(request)
+    f = get_object_or_404(Fornecedor, id=id, empresa=empresa)
+    nome = request.POST.get('nome', '').strip()
+    if not nome:
+        return JsonResponse({'status': 'erro', 'mensagem': 'Nome é obrigatório.'})
+    f.nome = nome
+    f.cnpj_cpf = request.POST.get('cnpj_cpf', '').strip()
+    f.telefone = request.POST.get('telefone', '').strip()
+    f.email = request.POST.get('email', '').strip()
+    f.endereco = request.POST.get('endereco', '').strip()
+    f.save()
+    return JsonResponse({'status': 'ok'})
+
+
+@login_required
+def excluir_fornecedor_ajax(request, id):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+    empresa = get_empresa_da_sessao(request)
+    f = get_object_or_404(Fornecedor, id=id, empresa=empresa)
+    f.delete()
+    return JsonResponse({'status': 'ok'})
+

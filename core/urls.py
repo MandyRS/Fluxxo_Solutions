@@ -1,4 +1,3 @@
-   
 from django.urls import path
 from . import views
 from .categoria_ajax import criar_categoria_ajax, excluir_categoria_ajax, criar_subcategoria_ajax, editar_categoria_ajax
@@ -29,6 +28,8 @@ urlpatterns = [
     path('estoque/listar-produtos-subcategoria/', views.listar_produtos_subcategoria, name='listar_produtos_subcategoria'),
     path('estoque/movimentar-wizard/', views.movimentar_wizard, name='movimentar_wizard'),
     path('estoque/desfazer-movimentacao/', views.desfazer_movimentacao, name='desfazer_movimentacao'),
+    path('estoque/movimentacao/<int:id>/editar/', views.editar_movimentacao_estoque, name='editar_movimentacao_estoque'),
+    path('estoque/item/<int:id>/movimentacoes/', views.movimentacoes_por_item, name='movimentacoes_por_item'),
 
     # ---------------- CLIENTES ----------------
 
@@ -53,6 +54,19 @@ urlpatterns = [
     path('orcamentos/criar/', views.criar_orcamento, name='criar_orcamento'),
     path('orcamentos/<int:orcamento_id>/obter/', views.obter_orcamento, name='obter_orcamento'),  # <-- nova
     path('orcamentos/<int:orcamento_id>/editar/', views.editar_orcamento, name='editar_orcamento'),
+
+    # ---------------- COMERCIAL ----------------
+    path('comercial/', views.comercial, name='comercial'),
+    path('comercial/entradas/criar/', views.criar_entrada_comercial, name='criar_entrada_comercial'),
+    path('comercial/entradas/<int:id>/detalhe/', views.detalhe_entrada_comercial, name='detalhe_entrada_comercial'),
+    path('comercial/entradas/<int:id>/editar/', views.editar_entrada_comercial, name='editar_entrada_comercial'),
+    path('comercial/entradas/<int:id>/excluir/', views.excluir_entrada_comercial, name='excluir_entrada_comercial'),
+    path('comercial/relatorio/fornecedor/', views.relatorio_entradas_fornecedor, name='relatorio_entradas_fornecedor'),
+
+    # ---------------- FORNECEDORES ----------------
+    path('fornecedores/criar/', views.criar_fornecedor_ajax, name='criar_fornecedor_ajax'),
+    path('fornecedores/<int:id>/editar/', views.editar_fornecedor_ajax, name='editar_fornecedor_ajax'),
+    path('fornecedores/<int:id>/excluir/', views.excluir_fornecedor_ajax, name='excluir_fornecedor_ajax'),
 
     # ---------------- FLUXO BANCÁRIO ----------------
     path('fluxo-bancario/', views.fluxo_bancario_dashboard, name='fluxo_bancario'),

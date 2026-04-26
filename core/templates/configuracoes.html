@@ -22,6 +22,9 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="bancos-tab" data-bs-toggle="tab" data-bs-target="#bancos" type="button" role="tab">Bancos</button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="fornecedores-tab" data-bs-toggle="tab" data-bs-target="#fornecedores" type="button" role="tab">Fornecedores</button>
+    </li>
   </ul>
 
   <div class="tab-content mt-3" id="configTabsContent">
@@ -172,6 +175,39 @@
           </tr>
           {% empty %}
           <tr><td colspan="5" class="text-center">Nenhum banco cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Aba Fornecedores -->
+    <div class="tab-pane fade" id="fornecedores" role="tabpanel">
+      <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalFornecedor" id="btn-novo-fornecedor">Novo Fornecedor</button>
+      <table class="table table-striped" id="tabela-fornecedores">
+        <thead>
+          <tr><th>Nome</th><th>CNPJ/CPF</th><th>Telefone</th><th>Email</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {% for forn in fornecedores_list %}
+          <tr>
+            <td>{{ forn.nome }}</td>
+            <td>{{ forn.cnpj_cpf|default:"-" }}</td>
+            <td>{{ forn.telefone|default:"-" }}</td>
+            <td>{{ forn.email|default:"-" }}</td>
+            <td>
+              <button class="btn btn-sm btn-info btn-editar-fornecedor"
+                data-id="{{ forn.id }}"
+                data-nome="{{ forn.nome }}"
+                data-cnpj_cpf="{{ forn.cnpj_cpf }}"
+                data-telefone="{{ forn.telefone }}"
+                data-email="{{ forn.email }}"
+                data-endereco="{{ forn.endereco }}"
+                data-bs-toggle="modal" data-bs-target="#modalFornecedor">Editar</button>
+              <button class="btn btn-sm btn-danger btn-excluir-fornecedor" data-id="{{ forn.id }}">Excluir</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center">Nenhum fornecedor cadastrado.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -424,6 +460,33 @@
           <input type="hidden" id="subcategoria-categoria" name="categoria_id">
           <div class="mb-2"><label>Nome</label><input type="text" name="nome" id="subcategoria-nome" class="form-control" required></div>
           <div class="mb-2"><label>Descrição</label><input type="text" name="descricao" id="subcategoria-descricao" class="form-control"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Fornecedor -->
+<div class="modal fade" id="modalFornecedor" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="formFornecedor">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Fornecedor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="fornecedor-id" name="id">
+          <div class="mb-2"><label>Nome</label><input type="text" name="nome" id="fornecedor-nome" class="form-control" required></div>
+          <div class="mb-2"><label>CNPJ/CPF</label><input type="text" name="cnpj_cpf" id="fornecedor-cnpj_cpf" class="form-control"></div>
+          <div class="mb-2"><label>Telefone</label><input type="text" name="telefone" id="fornecedor-telefone" class="form-control"></div>
+          <div class="mb-2"><label>Email</label><input type="email" name="email" id="fornecedor-email" class="form-control"></div>
+          <div class="mb-2"><label>Endereço</label><input type="text" name="endereco" id="fornecedor-endereco" class="form-control"></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -854,6 +917,48 @@ $(document).ready(function(){
           alert(data.mensagem || 'Erro ao salvar subcategoria.');
         }
       }
+    });
+  });
+
+  // ---- FORNECEDORES ----
+  $('#btn-novo-fornecedor').on('click', function() {
+    $('#formFornecedor')[0].reset();
+    $('#fornecedor-id').val('');
+    $('#modalFornecedor .modal-title').text('Novo Fornecedor');
+  });
+
+  $(document).on('click', '.btn-editar-fornecedor', function() {
+    var btn = $(this);
+    $('#fornecedor-id').val(btn.data('id'));
+    $('#fornecedor-nome').val(btn.data('nome'));
+    $('#fornecedor-cnpj_cpf').val(btn.data('cnpj_cpf'));
+    $('#fornecedor-telefone').val(btn.data('telefone'));
+    $('#fornecedor-email').val(btn.data('email'));
+    $('#fornecedor-endereco').val(btn.data('endereco'));
+    $('#modalFornecedor .modal-title').text('Editar Fornecedor');
+  });
+
+  $('#formFornecedor').submit(function(e) {
+    e.preventDefault();
+    var id = $('#fornecedor-id').val();
+    var url = id ? '/fornecedores/' + id + '/editar/' : '/fornecedores/criar/';
+    $.post(url, $(this).serialize(), function(data) {
+      if (data.status === 'ok') {
+        $('#modalFornecedor').modal('hide');
+        location.reload();
+      } else {
+        alert(data.mensagem || 'Erro ao salvar fornecedor.');
+      }
+    });
+  });
+
+  $(document).on('click', '.btn-excluir-fornecedor', function() {
+    if (!confirm('Excluir este fornecedor?')) return;
+    var id = $(this).data('id');
+    var linha = $(this).closest('tr');
+    $.post('/fornecedores/' + id + '/excluir/', {csrfmiddlewaretoken: csrftoken}, function(data) {
+      if (data.status === 'ok') linha.fadeOut();
+      else alert(data.mensagem || 'Erro ao excluir.');
     });
   });
 

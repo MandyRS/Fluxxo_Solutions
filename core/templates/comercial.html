@@ -1,0 +1,930 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-4">
+  <h2 class="mb-3">Comercial</h2>
+
+  <ul class="nav nav-tabs mb-3" id="comercialTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-entradas" data-bs-toggle="tab" data-bs-target="#aba-entradas" type="button" role="tab">Entradas</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-saidas" data-bs-toggle="tab" data-bs-target="#aba-saidas" type="button" role="tab">Saídas (Orçamentos)</button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="comercialTabsContent">
+
+    <!-- ===================== ABA ENTRADAS ===================== -->
+    <div class="tab-pane fade show active" id="aba-entradas" role="tabpanel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Entradas de Produtos</h5>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" id="btnRelatorioFornecedor"><i class="bi bi-bar-chart me-1"></i>Relatório por Fornecedor</button>
+          <button class="btn btn-primary btn-sm" id="btnNovaEntrada">+ Nova Entrada</button>
+        </div>
+      </div>
+      <table class="table table-striped table-hover align-middle" id="tabelaEntradas">
+        <thead class="table-light">
+          <tr>
+            <th>Data</th>
+            <th>Fornecedor</th>
+            <th>Itens</th>
+            <th>Observação</th>
+            <th>Criado por</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entrada in entradas %}
+          <tr>
+            <td>{{ entrada.data|date:"d/m/Y" }}</td>
+            <td>{{ entrada.fornecedor.nome|default:"-" }}</td>
+            <td>{{ entrada.itens.count }}</td>
+            <td>{{ entrada.observacao|default:"-" }}</td>
+            <td>{{ entrada.criado_por.username|default:"-" }}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-info btnVerEntrada" data-id="{{ entrada.id }}">Ver</button>
+              <button class="btn btn-sm btn-outline-warning btnEditarEntrada" data-id="{{ entrada.id }}">Editar</button>
+              <button class="btn btn-sm btn-outline-danger btnExcluirEntrada" data-id="{{ entrada.id }}">Excluir</button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center">Nenhuma entrada registrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===================== ABA SAÍDAS (ORÇAMENTOS) ===================== -->
+    <div class="tab-pane fade" id="aba-saidas" role="tabpanel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Orçamentos / Saídas</h5>
+        <button id="btnCriarOrcamento" class="btn btn-primary btn-sm">+ Novo Orçamento</button>
+      </div>
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-light">
+          <tr><th>#</th><th>Cliente</th><th>Previsão</th><th>Solicitante</th><th>Total (R$)</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {% for orc in orcamentos %}
+          <tr>
+            <td>{{ orc.id }}</td>
+            <td>{{ orc.cliente.razao_social }}</td>
+            <td>{{ orc.previsao_entrega|date:"d/m/Y" }}</td>
+            <td>{{ orc.solicitante }}</td>
+            <td>{{ orc.total|floatformat:2 }}</td>
+            <td>
+              <button class="btn btn-sm btn-info btnEditar" data-id="{{ orc.id }}">Editar</button>
+              <button class="btn btn-sm btn-danger btnExcluir" data-id="{{ orc.id }}" data-url="{% url 'core:excluir_orcamento' orc.id %}">Excluir</button>
+              <a href="{% url 'core:imprimir_orcamento' orc.id %}" target="_blank" class="btn btn-sm btn-secondary">Imprimir</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center">Nenhum orçamento encontrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== MODAL NOVA ENTRADA ===================== -->
+<div class="modal fade" id="modalEntrada" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form id="formEntrada">{% csrf_token %}
+        <input type="hidden" id="entradaEditandoId">
+        <div class="modal-header">
+          <h5 class="modal-title">Nova Entrada de Produtos</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Data</label>
+              <input type="date" id="entradaData" name="data" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Fornecedor</label>
+              <select id="entradaFornecedor" name="fornecedor_id" class="form-select">
+                <option value="">Selecione o fornecedor...</option>
+                {% for f in fornecedores %}
+                <option value="{{ f.id }}">{{ f.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Observação</label>
+              <input type="text" id="entradaObs" name="observacao" class="form-control" placeholder="Opcional...">
+            </div>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label fw-semibold mb-0">Produtos</label>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddProdutoEntrada">+ Adicionar Produto</button>
+          </div>
+          <table class="table table-bordered align-middle" id="tabelaItensEntrada">
+            <thead class="table-light">
+              <tr>
+                <th>Produto</th>
+                <th>Estoque Atual</th>
+                <th>Quantidade</th>
+                <th>Preço Unitário (R$)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Registrar Entrada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL VER ENTRADA ===================== -->
+<div class="modal fade" id="modalVerEntrada" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detalhes da Entrada</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="verEntradaBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL RELATÓRIO FORNECEDOR ===================== -->
+<div class="modal fade" id="modalRelForn" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-bar-chart me-2"></i>Relatório de Entradas por Fornecedor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Filtros -->
+        <div class="row g-2 mb-3 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label fw-semibold mb-1">Período — De</label>
+            <input type="date" id="relFornIni" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold mb-1">Até</label>
+            <input type="date" id="relFornFim" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold mb-1">Fornecedor</label>
+            <select id="relFornSelect" class="form-select form-select-sm">
+              <option value="">Todos</option>
+              {% for f in fornecedores %}
+              <option value="{{ f.id }}">{{ f.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-primary btn-sm w-100" id="btnGerarRelForn"><i class="bi bi-search me-1"></i>Gerar Relatório</button>
+          </div>
+        </div>
+        <!-- Resultado -->
+        <div id="relFornResultado"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-success btn-sm" id="btnImprimirRelForn" style="display:none"><i class="bi bi-printer me-1"></i>Imprimir</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL ORÇAMENTO ===================== -->
+<div class="modal fade" id="modalOrcamento" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form id="formOrcamento">{% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Orçamento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h5>Dados do Cliente</h5>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label>Cliente</label>
+              <div class="position-relative">
+                <input type="text" id="clienteInput" class="form-control" autocomplete="off" placeholder="Digite o nome do cliente...">
+                <input type="hidden" id="clienteId" name="cliente">
+                <ul id="clienteAutocompleteList" class="list-group shadow" style="display:none;position:absolute;z-index:9999;width:100%;max-height:220px;overflow-y:auto;"></ul>
+              </div>
+            </div>
+            <div class="col-md-6"><label>Nome Fantasia</label><input type="text" id="nome_fantasia" class="form-control" readonly></div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4"><label>CPF/CNPJ</label><input id="cpf_cnpj" class="form-control" readonly></div>
+            <div class="col-md-4"><label>Email</label><input id="email" class="form-control" readonly></div>
+            <div class="col-md-4"><label>Telefone</label><input id="telefone" class="form-control" readonly></div>
+          </div>
+          <div class="mb-3"><label>Endereço</label><input id="endereco" class="form-control" readonly></div>
+          <hr>
+          <h5>Informações do Orçamento</h5>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4"><label>Solicitante</label><input id="solicitante" name="solicitante" class="form-control"></div>
+            <div class="col-md-4"><label>Previsão de Entrega</label><input type="date" id="previsao_entrega" name="previsao_entrega" class="form-control"></div>
+            <div class="col-md-4"><label>Vencimento</label><input type="date" id="vencimento" name="vencimento" class="form-control"></div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label>Forma de Pagamento</label>
+              <select id="forma_pagamento" name="forma_pagamento" class="form-select">
+                <option value="">Selecione...</option>
+                <option>Pix</option><option>Cartão de Crédito</option><option>Cartão de Débito</option>
+                <option>Boleto</option><option>Transferência Bancária</option><option>Dinheiro</option><option>Outros</option>
+              </select>
+            </div>
+            <div class="col-md-6"><label>Responsável</label><input id="responsavel" name="responsavel" class="form-control"></div>
+          </div>
+          <hr>
+          <h5>Itens do Orçamento</h5>
+          <table class="table table-sm" id="tabelaItens">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Categoria</th>
+                <th>Subcategoria</th>
+                <th>Produto/Serviço</th>
+                <th>Qtd</th>
+                <th>Unitário (R$)</th>
+                <th>Total (R$)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <button type="button" id="btnAddItem" class="btn btn-outline-primary btn-sm">+ Adicionar Item</button>
+          <div class="text-end mt-3"><strong>Total Geral: R$ <span id="totalGeral">0,00</span></strong></div>
+          <hr>
+          <div class="row mt-2">
+            <div class="col-md-6 offset-md-6 text-end">
+              <label>Desconto (R$)</label>
+              <input type="number" id="desconto" step="0.01" min="0" value="0.00" class="form-control w-50 d-inline-block text-end">
+            </div>
+          </div>
+          <hr>
+          <div class="mb-3">
+            <label>Observações</label>
+            <textarea id="observacao" name="observacao" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Dados de categorias/subcategorias injetados pelo servidor
+var CATEGORIAS_ORC = [
+  {% for cat in categorias %}
+  {
+    id: {{ cat.id }},
+    nome: "{{ cat.nome|escapejs }}",
+    subcategorias: [
+      {% for sub in cat.subcategorias.all %}
+      { id: {{ sub.id }}, nome: "{{ sub.nome|escapejs }}" }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+];
+$(function() {
+
+  // =============================================
+  // ENTRADAS
+  // =============================================
+  var modalEntrada = new bootstrap.Modal(document.getElementById('modalEntrada'));
+
+  // Linha de produto
+  function criarLinhaEntrada(idx) {
+    return '<tr>' +
+      '<td style="position:relative;min-width:200px">' +
+        '<input type="text" class="form-control form-control-sm inputProdNomeEntrada" placeholder="Digite o produto..." autocomplete="off">' +
+        '<input type="hidden" class="inputProdIdEntrada">' +
+        '<ul class="list-group autocomplete-list-entrada shadow" style="display:none;position:absolute;z-index:9999;width:100%;max-height:200px;overflow-y:auto;"></ul>' +
+      '</td>' +
+      '<td><input type="text" class="form-control form-control-sm inputEstoqueEntrada" readonly placeholder="-"></td>' +
+      '<td><input type="number" class="form-control form-control-sm inputQtdEntrada" min="0.01" step="0.01" value="1"></td>' +
+      '<td><input type="number" class="form-control form-control-sm inputPrecoEntrada" min="0" step="0.01" value="0.00"></td>' +
+      '<td><button type="button" class="btn btn-outline-danger btn-sm btnRemoverLinhaEntrada">×</button></td>' +
+    '</tr>';
+  }
+
+  $('#btnNovaEntrada').on('click', function() {
+    $('#entradaEditandoId').val('');
+    $('#formEntrada')[0].reset();
+    $('#tabelaItensEntrada tbody').empty();
+    $('#tabelaItensEntrada tbody').append(criarLinhaEntrada(0));
+    $('#modalEntrada .modal-title').text('Nova Entrada de Produtos');
+    $('#modalEntrada .btn-success').text('Registrar Entrada');
+    var hoje = new Date().toISOString().split('T')[0];
+    $('#entradaData').val(hoje);
+    modalEntrada.show();
+  });
+
+  $('#btnAddProdutoEntrada').on('click', function() {
+    var idx = $('#tabelaItensEntrada tbody tr').length;
+    $('#tabelaItensEntrada tbody').append(criarLinhaEntrada(idx));
+  });
+
+  $(document).on('click', '.btnRemoverLinhaEntrada', function() {
+    $(this).closest('tr').remove();
+  });
+
+  // Autocomplete produto
+  $(document).on('input', '.inputProdNomeEntrada', function() {
+    var $input = $(this);
+    var termo = $input.val();
+    var $list = $input.siblings('.autocomplete-list-entrada');
+    if (termo.length < 2) { $list.hide().empty(); return; }
+    $.get('/estoque/autocomplete-produto/', {q: termo}, function(resp) {
+      $list.empty();
+      (resp.results || []).forEach(function(p) {
+        $list.append('<li class="list-group-item list-group-item-action py-1 px-2" style="cursor:pointer" data-id="' + p.id + '" data-nome="' + p.nome + '" data-estoque="' + p.estoque_atual + '">' + p.nome + '</li>');
+      });
+      $list.show();
+    });
+  });
+
+  $(document).on('click', '.autocomplete-list-entrada li', function() {
+    var $li = $(this);
+    var $tr = $li.closest('tr');
+    $li.closest('.autocomplete-list-entrada').hide().empty();
+    $tr.find('.inputProdNomeEntrada').val($li.data('nome'));
+    $tr.find('.inputProdIdEntrada').val($li.data('id'));
+    $tr.find('.inputEstoqueEntrada').val($li.data('estoque'));
+  });
+
+  $(document).on('click', function(e) {
+    if (!$(e.target).hasClass('inputProdNomeEntrada')) {
+      $('.autocomplete-list-entrada').hide().empty();
+    }
+  });
+
+  // Submeter entrada (criar ou editar)
+  $('#formEntrada').on('submit', function(e) {
+    e.preventDefault();
+    var itens = [];
+    var valido = true;
+    $('#tabelaItensEntrada tbody tr').each(function() {
+      var prodId = $(this).find('.inputProdIdEntrada').val();
+      var qtd = $(this).find('.inputQtdEntrada').val();
+      var preco = $(this).find('.inputPrecoEntrada').val();
+      if (!prodId || !qtd || parseFloat(qtd) <= 0) { valido = false; return; }
+      itens.push({ produto_id: prodId, quantidade: qtd, preco_unitario: preco });
+    });
+    if (!valido || itens.length === 0) { alert('Preencha todos os produtos corretamente.'); return; }
+    var editId = $('#entradaEditandoId').val();
+    var url = editId
+      ? '/comercial/entradas/' + editId + '/editar/'
+      : '/comercial/entradas/criar/';
+    $.post(url, {
+      csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').first().val(),
+      data: $('#entradaData').val(),
+      fornecedor_id: $('#entradaFornecedor').val(),
+      observacao: $('#entradaObs').val(),
+      itens: JSON.stringify(itens)
+    }, function(resp) {
+      if (resp.status === 'ok') { modalEntrada.hide(); location.reload(); }
+      else { alert(resp.mensagem || 'Erro ao salvar entrada.'); }
+    });
+  });
+
+  // Editar entrada
+  $(document).on('click', '.btnEditarEntrada', function() {
+    var id = $(this).data('id');
+    $.get('/comercial/entradas/' + id + '/detalhe/', function(resp) {
+      if (!resp.entrada) { alert('Erro ao carregar entrada.'); return; }
+      var e = resp.entrada;
+      $('#entradaEditandoId').val(id);
+      $('#modalEntrada .modal-title').text('Editar Entrada #' + id);
+      $('#modalEntrada .btn-success').text('Salvar Edição');
+      $('#entradaData').val(e.data_iso || '');
+      $('#entradaFornecedor').val(e.fornecedor_id || '');
+      $('#entradaObs').val(e.observacao || '');
+      $('#tabelaItensEntrada tbody').empty();
+      e.itens.forEach(function(i) {
+        var $linha = $(criarLinhaEntrada(0));
+        $linha.find('.inputProdNomeEntrada').val(i.produto);
+        $linha.find('.inputProdIdEntrada').val(i.produto_id);
+        $linha.find('.inputEstoqueEntrada').val(i.estoque_atual || '-');
+        $linha.find('.inputQtdEntrada').val(i.quantidade);
+        $linha.find('.inputPrecoEntrada').val(parseFloat(i.preco_unitario).toFixed(2));
+        $('#tabelaItensEntrada tbody').append($linha);
+      });
+      modalEntrada.show();
+    });
+  });
+
+  // Ver entrada
+  $(document).on('click', '.btnVerEntrada', function() {
+    var id = $(this).data('id');
+    $.get('/comercial/entradas/' + id + '/detalhe/', function(resp) {
+      var e = resp.entrada;
+      var html = '<p><strong>Data:</strong> ' + e.data + '</p>'
+        + '<p><strong>Fornecedor:</strong> ' + (e.fornecedor || '-') + '</p>'
+        + '<p><strong>Observação:</strong> ' + (e.observacao || '-') + '</p>'
+        + '<table class="table table-sm table-bordered"><thead><tr><th>Produto</th><th>Quantidade</th><th>Preço Unit.</th></tr></thead><tbody>';
+      e.itens.forEach(function(i) {
+        html += '<tr><td>' + i.produto + '</td><td>' + i.quantidade + '</td><td>R$ ' + parseFloat(i.preco_unitario).toFixed(2) + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      $('#verEntradaBody').html(html);
+      new bootstrap.Modal(document.getElementById('modalVerEntrada')).show();
+    });
+  });
+
+  // Excluir entrada
+  $(document).on('click', '.btnExcluirEntrada', function() {
+    if (!confirm('Excluir esta entrada? O estoque será revertido.')) return;
+    var id = $(this).data('id');
+    $.post('/comercial/entradas/' + id + '/excluir/', {
+      csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').first().val()
+    }, function(resp) {
+      if (resp.status === 'ok') { location.reload(); }
+      else { alert(resp.mensagem || 'Erro ao excluir.'); }
+    });
+  });
+
+  // =============================================
+  // RELATÓRIO POR FORNECEDOR
+  // =============================================
+  var modalRelForn = new bootstrap.Modal(document.getElementById('modalRelForn'));
+
+  $('#btnRelatorioFornecedor').on('click', function() {
+    $('#relFornResultado').empty();
+    $('#btnImprimirRelForn').hide();
+    // Preencher datas padrão: mês atual
+    var hoje = new Date();
+    var ini = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-01';
+    var fim = hoje.toISOString().split('T')[0];
+    $('#relFornIni').val(ini);
+    $('#relFornFim').val(fim);
+    $('#relFornSelect').val('');
+    modalRelForn.show();
+  });
+
+  $('#btnGerarRelForn').on('click', function() {
+    var params = {
+      data_ini: $('#relFornIni').val(),
+      data_fim: $('#relFornFim').val(),
+      fornecedor_id: $('#relFornSelect').val()
+    };
+    $('#relFornResultado').html('<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Carregando...</div>');
+    $.get('/comercial/relatorio/fornecedor/', params, function(resp) {
+      if (resp.status !== 'ok' || !resp.resultado.length) {
+        $('#relFornResultado').html('<div class="alert alert-info">Nenhum dado encontrado para o período.</div>');
+        $('#btnImprimirRelForn').hide();
+        return;
+      }
+      renderRelForn(resp.resultado);
+      $('#btnImprimirRelForn').show();
+    }).fail(function() {
+      $('#relFornResultado').html('<div class="alert alert-danger">Erro ao carregar relatório.</div>');
+    });
+  });
+
+  function renderRelForn(resultado) {
+    var totalGeral = resultado.reduce(function(acc, r) { return acc + r.valor_total; }, 0);
+    var html = '<div class="row g-3 mb-4">';
+    resultado.forEach(function(r) {
+      var pct = totalGeral > 0 ? ((r.valor_total / totalGeral) * 100).toFixed(1) : 0;
+      html += '<div class="col-md-4">' +
+        '<div class="card border-0 shadow-sm h-100">' +
+        '<div class="card-body">' +
+        '<div class="fw-bold text-truncate mb-1" title="' + r.fornecedor + '">' + r.fornecedor + '</div>' +
+        '<div class="text-muted small mb-2">' + r.num_entradas + ' entrada(s)</div>' +
+        '<div class="fs-5 fw-bold text-success">R$ ' + r.valor_total.toFixed(2).replace('.', ',') + '</div>' +
+        '<div class="progress mt-2" style="height:6px"><div class="progress-bar bg-success" style="width:' + pct + '%"></div></div>' +
+        '<div class="text-muted small text-end">' + pct + '% do total</div>' +
+        '</div></div></div>';
+    });
+    html += '</div>';
+
+    // Tabela resumo
+    html += '<table class="table table-sm table-bordered table-hover">' +
+      '<thead class="table-dark"><tr><th>Fornecedor</th><th>Entradas</th><th>Qtd. Total</th><th>Valor Total (R$)</th></tr></thead><tbody>';
+    resultado.forEach(function(r) {
+      html += '<tr>' +
+        '<td>' + r.fornecedor + '</td>' +
+        '<td class="text-center">' + r.num_entradas + '</td>' +
+        '<td class="text-center">' + r.qtd_total + '</td>' +
+        '<td class="text-end fw-semibold">R$ ' + r.valor_total.toFixed(2).replace('.', ',') + '</td>' +
+        '</tr>';
+    });
+    html += '<tr class="table-secondary fw-bold"><td>TOTAL</td><td class="text-center">' +
+      resultado.reduce(function(a,r){return a+r.num_entradas;},0) + '</td><td></td>' +
+      '<td class="text-end">R$ ' + totalGeral.toFixed(2).replace('.', ',') + '</td></tr>';
+    html += '</tbody></table>';
+
+    // Detalhamento por fornecedor (accordion)
+    html += '<h6 class="mt-3 mb-2">Detalhamento por Fornecedor</h6>';
+    html += '<div class="accordion" id="accordionRelForn">';
+    resultado.forEach(function(r, idx) {
+      var colId = 'relFornCol' + idx;
+      html += '<div class="accordion-item">' +
+        '<h2 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#' + colId + '">' +
+        r.fornecedor + ' &mdash; <span class="ms-2 text-success fw-bold">R$ ' + r.valor_total.toFixed(2).replace('.', ',') + '</span>' +
+        '</button></h2>' +
+        '<div id="' + colId + '" class="accordion-collapse collapse" data-bs-parent="#accordionRelForn">' +
+        '<div class="accordion-body p-2">';
+      r.detalhes.forEach(function(d) {
+        html += '<div class="mb-2 border rounded p-2">' +
+          '<div class="d-flex justify-content-between"><span class="fw-semibold">' + d.data + '</span>' +
+          '<span class="text-muted small">' + (d.observacao || '') + '</span>' +
+          '<span class="fw-bold text-success">R$ ' + d.valor.toFixed(2).replace('.', ',') + '</span></div>' +
+          '<table class="table table-xs table-sm mb-0 mt-1"><thead><tr><th>Produto</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr></thead><tbody>';
+        d.itens.forEach(function(i) {
+          html += '<tr><td>' + i.produto + '</td><td>' + i.quantidade + '</td>' +
+            '<td>R$ ' + parseFloat(i.preco_unitario).toFixed(2) + '</td>' +
+            '<td>R$ ' + parseFloat(i.total).toFixed(2) + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      });
+      html += '</div></div></div>';
+    });
+    html += '</div>';
+    $('#relFornResultado').html(html);
+  }
+
+  var _lastRelFornData = null;
+  $('#btnGerarRelForn').on('click', function() { /* already handled above, store data on success */ });
+
+  // Override para guardar dado para impressão
+  $(document).off('click', '#btnGerarRelForn').on('click', '#btnGerarRelForn', function() {
+    var params = {
+      data_ini: $('#relFornIni').val(),
+      data_fim: $('#relFornFim').val(),
+      fornecedor_id: $('#relFornSelect').val()
+    };
+    $('#relFornResultado').html('<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Carregando...</div>');
+    $.get('/comercial/relatorio/fornecedor/', params, function(resp) {
+      if (resp.status !== 'ok' || !resp.resultado.length) {
+        $('#relFornResultado').html('<div class="alert alert-info">Nenhum dado encontrado.</div>');
+        $('#btnImprimirRelForn').hide();
+        _lastRelFornData = null;
+        return;
+      }
+      _lastRelFornData = { resultado: resp.resultado, params: params };
+      renderRelForn(resp.resultado);
+      $('#btnImprimirRelForn').show();
+    }).fail(function() {
+      $('#relFornResultado').html('<div class="alert alert-danger">Erro ao carregar relatório.</div>');
+    });
+  });
+
+  $('#btnImprimirRelForn').on('click', function() {
+    if (!_lastRelFornData) return;
+    var d = _lastRelFornData;
+    var periodoStr = (d.params.data_ini || 'início') + ' a ' + (d.params.data_fim || 'hoje');
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório Fornecedores</title>' +
+      '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}' +
+      'h2{font-size:16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}' +
+      'th,td{border:1px solid #ccc;padding:4px 8px}th{background:#333;color:#fff}' +
+      '.sub-table th{background:#666}.total-row{background:#eee;font-weight:bold}' +
+      '@media print{button{display:none}}</style></head><body>';
+    html += '<h2>Relatório de Entradas por Fornecedor</h2>';
+    html += '<p><strong>Período:</strong> ' + periodoStr + '</p>';
+    html += '<table><thead><tr><th>Fornecedor</th><th>Entradas</th><th>Qtd. Total</th><th>Valor Total (R$)</th></tr></thead><tbody>';
+    var totalGeral = 0;
+    d.resultado.forEach(function(r) {
+      totalGeral += r.valor_total;
+      html += '<tr><td>' + r.fornecedor + '</td><td style="text-align:center">' + r.num_entradas + '</td>' +
+        '<td style="text-align:center">' + r.qtd_total + '</td>' +
+        '<td style="text-align:right">R$ ' + r.valor_total.toFixed(2).replace('.', ',') + '</td></tr>';
+    });
+    html += '<tr class="total-row"><td>TOTAL</td><td style="text-align:center">' +
+      d.resultado.reduce(function(a,r){return a+r.num_entradas;},0) + '</td><td></td>' +
+      '<td style="text-align:right">R$ ' + totalGeral.toFixed(2).replace('.', ',') + '</td></tr>';
+    html += '</tbody></table>';
+    d.resultado.forEach(function(r) {
+      html += '<h3 style="font-size:13px;margin-top:20px">' + r.fornecedor + '</h3>';
+      r.detalhes.forEach(function(det) {
+        html += '<p style="margin:4px 0"><strong>' + det.data + '</strong> &mdash; ' + (det.observacao || '') + ' &mdash; R$ ' + det.valor.toFixed(2).replace('.', ',') + '</p>';
+        html += '<table style="margin-left:16px;width:calc(100% - 16px)"><thead><tr class="sub-table"><th>Produto</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr></thead><tbody>';
+        det.itens.forEach(function(i) {
+          html += '<tr><td>' + i.produto + '</td><td>' + i.quantidade + '</td>' +
+            '<td>R$ ' + parseFloat(i.preco_unitario).toFixed(2) + '</td>' +
+            '<td>R$ ' + parseFloat(i.total).toFixed(2) + '</td></tr>';
+        });
+        html += '</tbody></table>';
+      });
+    });
+    html += '</body></html>';
+    var win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ win.print(); }, 400);
+  });
+
+  // =============================================
+  // ORÇAMENTOS (SAÍDAS)
+  // =============================================
+  const modalOrc = new bootstrap.Modal(document.getElementById('modalOrcamento'));
+  let editandoId = null;
+
+  // Autocomplete de clientes (jQuery puro, sem jQuery UI)
+  var _clienteTimer = null;
+  $('#clienteInput').on('input', function() {
+    var termo = $(this).val().trim();
+    var $list = $('#clienteAutocompleteList');
+    if (!termo) { $list.hide().empty(); $('#clienteId').val(''); return; }
+    clearTimeout(_clienteTimer);
+    _clienteTimer = setTimeout(function() {
+      $.getJSON("{% url 'core:autocomplete_cliente' %}", { term: termo }, function(data) {
+        $list.empty();
+        if (!data.length) { $list.hide(); return; }
+        data.forEach(function(item) {
+          var $li = $('<li class="list-group-item list-group-item-action py-1 px-2" style="cursor:pointer"></li>').text(item.label);
+          $li.data('item', item);
+          $list.append($li);
+        });
+        $list.show();
+      });
+    }, 250);
+  });
+
+  $(document).on('click', '#clienteAutocompleteList li', function() {
+    var item = $(this).data('item');
+    $('#clienteId').val(item.id);
+    $('#clienteInput').val(item.label);
+    $('#nome_fantasia').val(item.nome_fantasia || '');
+    $('#cpf_cnpj').val(item.cpf_cnpj || '');
+    $('#email').val(item.email || '');
+    $('#telefone').val(item.telefone || '');
+    $('#endereco').val(item.endereco || '');
+    $('#clienteAutocompleteList').hide().empty();
+  });
+
+  $(document).on('click', function(e) {
+    if (!$(e.target).closest('#clienteInput, #clienteAutocompleteList').length) {
+      $('#clienteAutocompleteList').hide();
+    }
+  });
+
+  $("#btnCriarOrcamento").click(function() {
+    editandoId = null;
+    $("#formOrcamento")[0].reset();
+    $("#tabelaItens tbody").empty();
+    $("#totalGeral").text("0,00");
+    $(".modal-title", "#modalOrcamento").text("Novo Orçamento");
+    modalOrc.show();
+  });
+
+  // ---- Helpers de categoria/subcategoria/produto ----
+  function buildCatOptions() {
+    var html = '<option value="">Categoria...</option>';
+    CATEGORIAS_ORC.forEach(function(c) {
+      html += '<option value="' + c.id + '">' + c.nome + '</option>';
+    });
+    return html;
+  }
+
+  function buildSubcatOptions(catId) {
+    var cat = CATEGORIAS_ORC.find(function(c) { return c.id == catId; });
+    var html = '<option value="">Subcategoria...</option>';
+    if (cat) {
+      cat.subcategorias.forEach(function(s) {
+        html += '<option value="' + s.id + '">' + s.nome + '</option>';
+      });
+    }
+    return html;
+  }
+
+  function criarLinhaItem() {
+    return $('<tr>' +
+      '<td>' +
+        '<select class="form-select form-select-sm tipoItem" style="min-width:90px">' +
+          '<option value="produto">Produto</option>' +
+          '<option value="servico">Serviço</option>' +
+        '</select>' +
+      '</td>' +
+      '<td class="tdCategoria">' +
+        '<select class="form-select form-select-sm selectCatItem" style="min-width:120px">' + buildCatOptions() + '</select>' +
+      '</td>' +
+      '<td class="tdSubcat">' +
+        '<select class="form-select form-select-sm selectSubcatItem" style="min-width:130px"><option value="">Subcategoria...</option></select>' +
+      '</td>' +
+      '<td style="position:relative;min-width:180px">' +
+        '<select class="form-select form-select-sm selectProdItem" style="min-width:160px"><option value="">Selecione...</option></select>' +
+        '<input type="hidden" class="hiddenProdId">' +
+        '<input type="hidden" class="hiddenProdTipo">' +
+        '<input type="text" class="form-control form-control-sm inputServico" placeholder="Nome do serviço..." style="display:none">' +
+      '</td>' +
+      '<td><input type="number" class="form-control form-control-sm qtdItem" value="1" min="0.01" step="0.01"></td>' +
+      '<td><input type="number" class="form-control form-control-sm valorItem" step="0.01" value="0.00"></td>' +
+      '<td class="totalItem align-middle">R$ 0,00</td>' +
+      '<td><button type="button" class="btn btn-sm btn-danger btnRemoverItem">×</button></td>' +
+    '</tr>');
+  }
+
+  $("#btnAddItem").click(function() {
+    $("#tabelaItens tbody").append(criarLinhaItem());
+  });
+
+  // Tipo muda: mostrar/ocultar campos categoria/subcat/produto vs serviço
+  $(document).on('change', '.tipoItem', function() {
+    var $tr = $(this).closest('tr');
+    var tipo = $(this).val();
+    if (tipo === 'produto') {
+      $tr.find('.tdCategoria, .tdSubcat').show();
+      $tr.find('.selectProdItem').show();
+      $tr.find('.inputServico').hide().val('');
+      $tr.find('.hiddenProdTipo').val('produto');
+    } else {
+      $tr.find('.tdCategoria, .tdSubcat').hide();
+      $tr.find('.selectProdItem').hide();
+      $tr.find('.hiddenProdId').val('');
+      $tr.find('.inputServico').show();
+      $tr.find('.hiddenProdTipo').val('servico');
+    }
+    atualizarTotal();
+  });
+
+  // Categoria muda: carregar subcategorias
+  $(document).on('change', '.selectCatItem', function() {
+    var $tr = $(this).closest('tr');
+    var catId = $(this).val();
+    $tr.find('.selectSubcatItem').html(buildSubcatOptions(catId));
+    $tr.find('.selectProdItem').html('<option value="">Selecione...</option>');
+    $tr.find('.hiddenProdId').val('');
+    // Carregar produtos da categoria (sem subcategoria específica)
+    if (catId) {
+      $.get('/estoque/listar-produtos-categoria/?categoria=' + catId, function(resp) {
+        var html = '<option value="">Selecione...</option>';
+        (resp.produtos || []).forEach(function(p) {
+          html += '<option value="' + p.id + '" data-preco="' + p.preco_unitario + '">' + p.nome + (p.codigo ? ' (' + p.codigo + ')' : '') + '</option>';
+        });
+        $tr.find('.selectProdItem').html(html);
+      });
+    }
+  });
+
+  // Subcategoria muda: carregar produtos
+  $(document).on('change', '.selectSubcatItem', function() {
+    var $tr = $(this).closest('tr');
+    var subcatId = $(this).val();
+    $tr.find('.selectProdItem').html('<option value="">Selecione...</option>');
+    $tr.find('.hiddenProdId').val('');
+    if (subcatId) {
+      $.get('/estoque/listar-produtos-subcategoria/?subcategoria_id=' + subcatId, function(resp) {
+        var html = '<option value="">Selecione...</option>';
+        (resp.produtos || []).forEach(function(p) {
+          html += '<option value="' + p.id + '" data-preco="' + (p.preco_unitario || 0) + '">' + p.nome + (p.codigo ? ' (' + p.codigo + ')' : '') + '</option>';
+        });
+        $tr.find('.selectProdItem').html(html);
+      });
+    }
+  });
+
+  // Produto selecionado: preencher hidden + preço unitário
+  $(document).on('change', '.selectProdItem', function() {
+    var $tr = $(this).closest('tr');
+    var prodId = $(this).val();
+    var preco = $(this).find('option:selected').data('preco');
+    $tr.find('.hiddenProdId').val(prodId);
+    if (prodId && preco !== undefined && parseFloat(preco) > 0) {
+      $tr.find('.valorItem').val(parseFloat(preco).toFixed(2));
+      atualizarTotal();
+    }
+  });
+
+  $(document).on('click', '.btnRemoverItem', function() { $(this).closest('tr').remove(); atualizarTotal(); });
+  $(document).on('input', '.qtdItem, .valorItem, #desconto', atualizarTotal);
+
+  function atualizarTotal() {
+    let total = 0;
+    $("#tabelaItens tbody tr").each(function() {
+      const qtd = parseFloat($(this).find('.qtdItem').val()) || 0;
+      const val = parseFloat($(this).find('.valorItem').val()) || 0;
+      const sub = qtd * val;
+      $(this).find('.totalItem').text("R$ " + sub.toFixed(2).replace('.', ','));
+      total += sub;
+    });
+    const desc = parseFloat($("#desconto").val()) || 0;
+    $("#totalGeral").text(Math.max(total - desc, 0).toFixed(2).replace('.', ','));
+  }
+
+  $("#formOrcamento").submit(function(e) {
+    e.preventDefault();
+    const itens = [];
+    $("#tabelaItens tbody tr").each(function() {
+      const $tr = $(this);
+      const tipo = $tr.find('.tipoItem').val();
+      let itemId, nome;
+      if (tipo === 'produto') {
+        itemId = $tr.find('.hiddenProdId').val();
+        nome = $tr.find('.selectProdItem option:selected').text();
+      } else {
+        // Para serviço ainda não há autocomplete — aceitar input livre ou adaptação futura
+        itemId = $tr.find('.hiddenProdId').val();
+        nome = $tr.find('.inputServico').val();
+      }
+      if (!itemId && tipo === 'produto') return;
+      if (!nome && tipo === 'servico') return;
+      itens.push({
+        id_item: itemId,
+        tipo: tipo,
+        quantidade: $tr.find('.qtdItem').val(),
+        valor_unitario: $tr.find('.valorItem').val()
+      });
+    });
+    const dados = {
+      csrfmiddlewaretoken: $("input[name=csrfmiddlewaretoken]").first().val(),
+      cliente: $("#clienteId").val(), solicitante: $("#solicitante").val(),
+      previsao_entrega: $("#previsao_entrega").val(), vencimento: $("#vencimento").val(),
+      forma_pagamento: $("#forma_pagamento").val(), responsavel: $("#responsavel").val(),
+      desconto: $("#desconto").val(), observacao: $("#observacao").val(),
+      itens: JSON.stringify(itens)
+    };
+    const url = editandoId ? `/orcamentos/${editandoId}/editar/` : "{% url 'core:criar_orcamento' %}";
+    $.post(url, dados).done(res => {
+      if (res.status === "ok") { alert("Orçamento salvo!"); location.reload(); }
+      else { alert("Erro: " + res.mensagem); }
+    }).fail(() => alert("Erro no servidor."));
+  });
+
+  $(document).on('click', '.btnEditar', function() {
+    const id = $(this).data('id');
+    $.get(`/orcamentos/${id}/obter/`, function(res) {
+      if (res.status !== "ok") { alert("Erro ao carregar orçamento."); return; }
+      const o = res.orcamento;
+      editandoId = o.id;
+      $(".modal-title", "#modalOrcamento").text("Editar Orçamento #" + o.id);
+      $("#clienteInput").val(o.cliente_nome); $("#clienteId").val(o.cliente_id);
+      $("#solicitante").val(o.solicitante); $("#previsao_entrega").val(o.previsao_entrega);
+      $("#vencimento").val(o.vencimento); $("#forma_pagamento").val(o.forma_pagamento);
+      $("#responsavel").val(o.responsavel); $("#desconto").val(o.desconto);
+      $("#observacao").val(o.observacao);
+      $("#tabelaItens tbody").empty();
+
+      // Carregar itens com promises para preencher selects corretamente
+      const promises = o.itens.map(function(i) {
+        return new Promise(function(resolve) {
+          const $linha = criarLinhaItem();
+          $linha.find('.tipoItem').val(i.tipo);
+          $linha.find('.qtdItem').val(i.quantidade);
+          $linha.find('.valorItem').val(parseFloat(i.valor_unitario).toFixed(2));
+          $linha.find('.hiddenProdId').val(i.id_item);
+          $linha.find('.hiddenProdTipo').val(i.tipo);
+
+          if (i.tipo === 'servico') {
+            $linha.find('.tdCategoria, .tdSubcat').hide();
+            $linha.find('.selectProdItem').hide();
+            $linha.find('.inputServico').show().val(i.nome);
+            resolve($linha);
+          } else {
+            // Produto: buscar produto por ID para saber categoria/subcategoria
+            $.get('/estoque/autocomplete-produto/', {q: i.nome}, function(resp) {
+              // Adiciona opção do produto no select de produto
+              $linha.find('.selectProdItem').html(
+                '<option value="' + i.id_item + '">' + i.nome + '</option>'
+              );
+              $linha.find('.selectProdItem').val(i.id_item);
+              resolve($linha);
+            }).fail(function() { resolve($linha); });
+          }
+        });
+      });
+
+      Promise.all(promises).then(function(linhas) {
+        linhas.forEach(function($l) { $("#tabelaItens tbody").append($l); });
+        atualizarTotal();
+        modalOrc.show();
+      });
+    });
+  });
+
+  $(document).on('click', '.btnExcluir', function() {
+    if (!confirm("Excluir este orçamento?")) return;
+    $.post($(this).data('url'), { csrfmiddlewaretoken: $("input[name=csrfmiddlewaretoken]").first().val() })
+      .done(res => { if (res.status === "ok") { location.reload(); } else { alert("Erro: " + res.mensagem); } })
+      .fail(() => alert("Erro no servidor."));
+  });
+
+});
+</script>
+{% endblock %}

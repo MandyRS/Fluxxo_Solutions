@@ -295,3 +295,49 @@ class SubcategoriaProduto(models.Model):
 
     def __str__(self):
         return f"{self.categoria.nome} - {self.nome}"
+
+
+# ------------------------
+# FORNECEDOR
+# ------------------------
+class Fornecedor(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    nome = models.CharField(max_length=200)
+    cnpj_cpf = models.CharField(max_length=50, blank=True)
+    telefone = models.CharField(max_length=50, blank=True)
+    email = models.EmailField(blank=True)
+    endereco = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['nome']
+
+    def __str__(self):
+        return f"{self.nome} ({self.empresa.nome})"
+
+
+# ------------------------
+# ENTRADA COMERCIAL
+# ------------------------
+class EntradaComercial(models.Model):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True)
+    data = models.DateField()
+    observacao = models.CharField(max_length=255, blank=True)
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-data', '-criado_em']
+
+    def __str__(self):
+        return f"Entrada {self.id} - {self.data}"
+
+
+class ItemEntradaComercial(models.Model):
+    entrada = models.ForeignKey(EntradaComercial, on_delete=models.CASCADE, related_name='itens')
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    quantidade = models.DecimalField(max_digits=14, decimal_places=2)
+    preco_unitario = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+
+    def __str__(self):
+        return f"{self.produto.nome} x {self.quantidade}"
