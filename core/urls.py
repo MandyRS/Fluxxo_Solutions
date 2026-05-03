@@ -71,6 +71,8 @@ urlpatterns = [
     # ---------------- FLUXO BANCÁRIO ----------------
     path('fluxo-bancario/', views.fluxo_bancario_dashboard, name='fluxo_bancario'),
     path('fluxo-bancario/novo/', views.novo_lancamento_bancario, name='novo_lancamento_bancario'),
+    path('fluxo-bancario/<int:id>/editar/', views.editar_lancamento_bancario, name='editar_lancamento_bancario'),
+    path('fluxo-bancario/<int:id>/excluir/', views.excluir_lancamento_bancario, name='excluir_lancamento_bancario'),
     path('fluxo-bancario/importar/', views.importar_lancamentos_excel, name='importar_lancamentos_excel'),
     path('fluxo-bancario/planilha-exemplo/', views.baixar_planilha_exemplo, name='baixar_planilha_exemplo'),
     path('orcamentos/<int:orcamento_id>/excluir/', views.excluir_orcamento, name='excluir_orcamento'),
@@ -94,10 +96,6 @@ urlpatterns = [
     path('bancos/<int:id>/excluir/', views.excluir_banco_ajax, name='excluir_banco_ajax'),
     path('bancos/listar/', views.listar_bancos_ajax, name='listar_bancos_ajax'),
 
-    # Lançamentos Bancários
-    path('lancamentos/<int:id>/editar/', views.editar_lancamento_bancario, name='editar_lancamento_bancario'),
-    path('lancamentos/<int:id>/excluir/', views.excluir_lancamento_bancario, name='excluir_lancamento_bancario'),
-
     # ---------------- DETALHE ORÇAMENTO JSON ----------------
     
     path('orcamentos/<int:id>/json/', views.orcamento_detalhe_json, name='orcamento_detalhe_json'),
@@ -111,6 +109,10 @@ urlpatterns = [
 
      # ---------------- MATÉRIA-PRIMA (API) ----------------
     path('materias-primas/subcategorias/', views.listar_materias_primas_por_subcategoria, name='listar_materias_primas_por_subcategoria'),
+
+    # ---------------- PERFIL ----------------
+    path('perfil/', views.perfil, name='perfil'),
+    path('documentacao/', views.documentacao, name='documentacao'),
 ]
 
 if settings.DEBUG:

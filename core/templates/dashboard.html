@@ -1,105 +1,378 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block topbar_title %}Dashboard{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-  <h2 class="mb-4">Dashboard</h2>
-  <!-- Cards principais -->
-  <div class="row g-4">
-    <div class="col-md-3">
-      <div class="card text-white bg-info shadow">
-        <div class="card-body">
-          <h6>Clientes</h6>
-          <h3>{{ clientes }}</h3>
-        </div>
-      </div>
+<style>
+  .dash-card {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.09) !important;
+    border-radius: 16px;
+    transition: transform .15s, border-color .15s;
+  }
+  .dash-card:hover { transform: translateY(-3px); border-color: rgba(99,102,241,.35) !important; }
+  .kpi-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+  }
+  .section-title { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: #64748b; font-weight: 700; margin-bottom: .5rem; }
+  .saldo-positivo { color: #4ade80 !important; }
+  .saldo-negativo { color: #f87171 !important; }
+  .table-dash td, .table-dash th { vertical-align: middle; font-size: .85rem; color: #cbd5e1; border-color: rgba(255,255,255,.07) !important; }
+  .table-dash thead th { color: #64748b; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
+  .table-dash { --bs-table-bg: transparent; }
+  .text-muted { color: #64748b !important; }
+  .card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
+  h4.fw-bold { color: #f1f5f9; }
+</style>
+
+<div class="px-2 px-md-3">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+      <h4 class="fw-bold mb-0" style="color:#f1f5f9">{{ empresa.nome }}</h4>
+      <span class="small" style="color:#64748b">{{ hoje|date:"l, d \d\e F \d\e Y" }}</span>
     </div>
-    <div class="col-md-3">
-      <div class="card text-white bg-success shadow">
-        <div class="card-body">
-          <h6>Produtos</h6>
-          <h3>{{ produtos }}</h3>
-        </div>
-      </div>
+    {% if produtos_criticos %}
+    <div class="d-flex align-items-center gap-2 px-3 py-2 rounded-3" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)">
+      <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+      <span class="fw-semibold small" style="color:#fbbf24">{{ produtos_criticos|length }} produto{% if produtos_criticos|length != 1 %}s{% endif %} com estoque crítico</span>
     </div>
-    <div class="col-md-3">
-      <div class="card text-white bg-warning shadow">
-        <div class="card-body">
-          <h6>Serviços</h6>
-          <h3>{{ servicos }}</h3>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card text-white bg-primary shadow">
-        <div class="card-body">
-          <h6>Orçamentos</h6>
-          <h3>{{ orcamentos }}</h3>
-        </div>
-      </div>
-    </div>
+    {% endif %}
   </div>
-  <!-- Valor total -->
-  <div class="alert alert-secondary mt-4 text-center shadow-sm">
-    <strong>Valor total de orçamentos:</strong> R$ {{ orcamentos_valor_total|floatformat:2 }}
-  </div>
-  <!-- Gráficos -->
-  <div class="row mt-5">
-    <div class="col-md-6">
-      <div class="card shadow">
-        <div class="card-body">
-          <h5 class="card-title text-center">Orçamentos criados por mês</h5>
-          <canvas id="chartQuantidade"></canvas>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+
+    <div class="col-6 col-md-3">
+      <div class="dash-card card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="section-title mb-1">Saldo Bancário</p>
+            <h4 class="fw-bold mb-0 {% if saldo_mes >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+              R$ {{ saldo_mes|floatformat:2 }}
+            </h4>
+          </div>
+          <div class="kpi-icon {% if saldo_mes >= 0 %}bg-success bg-opacity-10 text-success{% else %}bg-danger bg-opacity-10 text-danger{% endif %}">
+            <i class="bi bi-bank"></i>
+          </div>
         </div>
+        <div class="mt-2 small text-muted">Receitas: <span class="text-success fw-semibold">R$ {{ receitas_mes|floatformat:2 }}</span></div>
+        <div class="small text-muted">Despesas: <span class="text-danger fw-semibold">R$ {{ despesas_mes|floatformat:2 }}</span></div>
+        <div class="small text-muted">Saldo total: <span class="fw-semibold" style="color:#e2e8f0">R$ {{ saldo_bancario_total|floatformat:2 }}</span></div>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="card shadow">
-        <div class="card-body">
-          <h5 class="card-title text-center">Valor Total (R$) por Mês</h5>
-          <canvas id="chartValor"></canvas>
+
+    <div class="col-6 col-md-3">
+      <div class="dash-card card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="section-title mb-1">Orçamentos</p>
+            <h4 class="fw-bold mb-0 text-primary">{{ orcamentos_mes_count }}</h4>
+          </div>
+          <div class="kpi-icon bg-primary bg-opacity-10 text-primary">
+            <i class="bi bi-file-earmark-text"></i>
+          </div>
         </div>
+        <div class="mt-2 small text-muted">Valor do mês: <span class="fw-semibold" style="color:#e2e8f0">R$ {{ orcamentos_valor_mes_atual|floatformat:2 }}</span></div>
+        <div class="small text-muted">Total geral: <span class="fw-semibold" style="color:#e2e8f0">{{ orcamentos }} (R$ {{ orcamentos_valor_total|floatformat:2 }})</span></div>
+        {% if alerta_orcamentos %}
+        <div class="small text-warning fw-semibold mt-1"><i class="bi bi-clock me-1"></i>{{ alerta_orcamentos.count }} entrega{% if alerta_orcamentos.count != 1 %}s{% endif %} em até 3 dias</div>
+        {% endif %}
       </div>
     </div>
+
+    <div class="col-6 col-md-3">
+      <div class="dash-card card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="section-title mb-1">Compras do Mês</p>
+            <h4 class="fw-bold mb-0 text-info">R$ {{ valor_entradas_mes|floatformat:2 }}</h4>
+          </div>
+          <div class="kpi-icon bg-info bg-opacity-10 text-info">
+            <i class="bi bi-box-arrow-in-down"></i>
+          </div>
+        </div>
+        <div class="mt-2 small text-muted">Fornecedores: <span class="fw-semibold" style="color:#e2e8f0">{{ fornecedores_mes_count }}</span></div>
+        <div class="small text-muted">Entradas: <span class="fw-semibold" style="color:#e2e8f0">{{ entradas_mes_count }}</span></div>
+      </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <div class="dash-card card h-100 p-3">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="section-title mb-1">Estoque</p>
+            <h4 class="fw-bold mb-0 text-secondary">{{ total_estoque_itens }}</h4>
+          </div>
+          <div class="kpi-icon bg-secondary bg-opacity-10 text-secondary">
+            <i class="bi bi-boxes"></i>
+          </div>
+        </div>
+        <div class="mt-2 small text-muted">Itens cadastrados</div>
+        {% if produtos_criticos %}
+        <div class="small text-danger fw-semibold mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ produtos_criticos|length }} crítico{% if produtos_criticos|length != 1 %}s{% endif %}</div>
+        {% else %}
+        <div class="small text-success fw-semibold mt-1"><i class="bi bi-check-circle me-1"></i>Todos em nível seguro</div>
+        {% endif %}
+      </div>
+    </div>
+
   </div>
+
+
+  <div class="row g-3 mb-4">
+
+    <!-- Produtos que mais saíram -->
+    <div class="col-md-4">
+      <div class="dash-card card p-3 d-flex flex-column" style="height:300px">
+        <p class="section-title"><i class="bi bi-arrow-up-right-circle text-danger me-1"></i>Produtos que Mais Saíram</p>
+        {% if top_saidas %}
+          <div style="flex:1;overflow-y:auto;min-height:0">
+          <table class="table table-sm table-dash mb-0">
+            <thead><tr><th>Produto</th><th class="text-end">Total Saído</th><th class="text-end">Unid.</th></tr></thead>
+            <tbody>
+              {% for item in top_saidas %}
+              <tr>
+                <td class="text-truncate" style="max-width:130px" title="{{ item.item__nome }}">{{ item.item__nome }}</td>
+                <td class="text-end fw-bold text-danger">{{ item.total|floatformat:0 }}</td>
+                <td class="text-end text-muted small">{{ item.item__unidade }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-arrow-up-right fs-2 d-block mb-2"></i>
+            <span class="small">Nenhuma saída registrada</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Produtos que mais entraram -->
+    <div class="col-md-4">
+      <div class="dash-card card p-3 d-flex flex-column" style="height:300px">
+        <p class="section-title"><i class="bi bi-arrow-down-left-circle text-success me-1"></i>Produtos que Mais Entraram</p>
+        {% if top_entradas %}
+          <div style="flex:1;overflow-y:auto;min-height:0">
+          <table class="table table-sm table-dash mb-0">
+            <thead><tr><th>Produto</th><th class="text-end">Total Entrado</th><th class="text-end">Unid.</th></tr></thead>
+            <tbody>
+              {% for item in top_entradas %}
+              <tr>
+                <td class="text-truncate" style="max-width:130px" title="{{ item.item__nome }}">{{ item.item__nome }}</td>
+                <td class="text-end fw-bold text-success">{{ item.total|floatformat:0 }}</td>
+                <td class="text-end text-muted small">{{ item.item__unidade }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-arrow-down-left fs-2 d-block mb-2"></i>
+            <span class="small">Nenhuma entrada registrada</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Maior estoque em quantidade -->
+    <div class="col-md-4">
+      <div class="dash-card card p-3 d-flex flex-column" style="height:300px">
+        <p class="section-title"><i class="bi bi-boxes text-secondary me-1"></i>Maior Estoque em Quantidade</p>
+        {% if produtos_maior_estoque %}
+          <div style="flex:1;overflow-y:auto;min-height:0">
+          <table class="table table-sm table-dash mb-0">
+            <thead><tr><th>Produto</th><th class="text-end">Qtd</th><th class="text-end">Unid.</th></tr></thead>
+            <tbody>
+              {% for item in produtos_maior_estoque %}
+              <tr>
+                <td class="text-truncate" style="max-width:130px" title="{{ item.nome }}">{{ item.nome }}</td>
+                <td class="text-end fw-bold text-primary">{{ item.quantidade|floatformat:0 }}</td>
+                <td class="text-end text-muted small">{{ item.unidade }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+          <a href="{% url 'core:estoque' %}" class="btn btn-sm btn-outline-secondary w-100 mt-2">Ver estoque completo</a>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-boxes fs-2 d-block mb-2"></i>
+            <span class="small">Nenhum item em estoque</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Estoque crítico + Orçamentos recentes + Entradas recentes -->
+  <div class="row g-3 mb-4">
+
+    <div class="col-md-4">
+      <div class="dash-card card p-3 d-flex flex-column" style="height:300px">
+        <p class="section-title">Estoque Crítico</p>
+        {% if produtos_criticos %}
+          <div class="table-responsive" style="flex:1;overflow-y:auto;min-height:0">
+            <table class="table table-sm table-dash mb-0">
+              <thead><tr><th>Produto</th><th class="text-center">Qtd</th><th class="text-center">Crítico</th></tr></thead>
+              <tbody>
+                {% for item in produtos_criticos %}
+                {% if forloop.counter <= 8 %}
+                <tr>
+                  <td><span class="fw-semibold">{{ item.nome }}</span></td>
+                  <td class="text-center text-danger fw-bold">{{ item.quantidade|floatformat:0 }}</td>
+                  <td class="text-center">
+                    {% if item.quantidade <= 0 %}
+                      <span class="badge bg-danger text-white" style="font-size:.7rem">Zerado</span>
+                    {% else %}
+                      <span class="badge bg-warning text-dark" style="font-size:.7rem">Abaixo do mín</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+                {% if produtos_criticos.count > 8 %}
+                <tr><td colspan="3" class="text-muted text-center small fst-italic">...e mais {{ produtos_criticos.count|add:"-8" }}</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          <a href="{% url 'core:estoque' %}" class="btn btn-sm btn-outline-danger w-100 mt-2">Ver estoque completo</a>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>
+            <span class="small">Nenhum produto em nível crítico</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="dash-card card p-3 d-flex flex-column" style="height:300px">
+        <p class="section-title">Orçamentos Recentes</p>
+        {% if orcamentos_recentes %}
+        <div class="table-responsive" style="flex:1;overflow-y:auto;min-height:0">
+          <table class="table table-sm table-dash mb-0">
+            <thead><tr><th>#</th><th>Cliente</th><th>Data</th></tr></thead>
+            <tbody>
+              {% for orc in orcamentos_recentes %}
+              <tr>
+                <td class="text-primary fw-bold">{{ orc.numero }}</td>
+                <td class="text-truncate" style="max-width:120px">{{ orc.cliente.razao_social|default:"—" }}</td>
+                <td class="text-muted">{{ orc.criado_em|date:"d/m" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <a href="{% url 'core:comercial' %}" class="btn btn-sm btn-outline-primary w-100 mt-2">Ver todos</a>
+        {% else %}
+          <div class="text-center py-4 text-muted"><i class="bi bi-file-earmark fs-2 d-block mb-2"></i><span class="small">Nenhum orçamento</span></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="dash-card card p-3 d-flex flex-column" style="height:300px">
+        <p class="section-title">Entradas Recentes</p>
+        {% if entradas_recentes %}
+        <div class="table-responsive" style="flex:1;overflow-y:auto;min-height:0">
+          <table class="table table-sm table-dash mb-0">
+            <thead><tr><th>Data</th><th>Fornecedor</th><th>Por</th></tr></thead>
+            <tbody>
+              {% for ent in entradas_recentes %}
+              <tr>
+                <td class="text-muted">{{ ent.data|date:"d/m" }}</td>
+                <td class="text-truncate" style="max-width:110px">{{ ent.fornecedor.nome|default:"—" }}</td>
+                <td class="text-muted small">{{ ent.criado_por.get_short_name|default:ent.criado_por.username }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <a href="{% url 'core:comercial' %}" class="btn btn-sm btn-outline-info w-100 mt-2">Ver todas</a>
+        {% else %}
+          <div class="text-center py-4 text-muted"><i class="bi bi-box-arrow-in-down fs-2 d-block mb-2"></i><span class="small">Nenhuma entrada</span></div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+ 
+
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  const meses = JSON.parse('{{ meses|escapejs }}');
-  const orcamentosMes = JSON.parse('{{ orcamentos_mes|escapejs }}');
-  const orcamentosValorMes = JSON.parse('{{ orcamentos_valor_mes|escapejs }}');
+const meses = {{ meses|safe }};
+const qtdMes = {{ orcamentos_mes|safe }};
+const valorMes = {{ orcamentos_valor_mes|safe }};
 
-  // Gráfico de quantidade
-  new Chart(document.getElementById('chartQuantidade'), {
-    type: 'bar',
-    data: {
-      labels: meses,
-      datasets: [{
-        label: 'Orçamentos criados',
-        data: orcamentosMes,
-        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+const ctxBar = document.getElementById('chartQtd');
+const gradBar = ctxBar.getContext('2d').createLinearGradient(0, 0, 0, 200);
+gradBar.addColorStop(0, 'rgba(99,102,241,.85)');
+gradBar.addColorStop(1, 'rgba(99,102,241,.2)');
+
+new Chart(ctxBar, {
+  type: 'bar',
+  data: {
+    labels: meses,
+    datasets: [{
+      label: 'Orçamentos',
+      data: qtdMes,
+      backgroundColor: gradBar,
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.04)' } }
     }
-  });
+  }
+});
 
-  // Gráfico de valores
-  new Chart(document.getElementById('chartValor'), {
-    type: 'line',
-    data: {
-      labels: meses,
-      datasets: [{
-        label: 'Valor Total (R$)',
-        data: orcamentosValorMes,
-        borderColor: 'rgba(255, 99, 132, 1)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.3
-      }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+const ctxLine = document.getElementById('chartValor');
+const gradLine = ctxLine.getContext('2d').createLinearGradient(0, 0, 0, 160);
+gradLine.addColorStop(0, 'rgba(34,197,94,.35)');
+gradLine.addColorStop(1, 'rgba(34,197,94,.0)');
+
+new Chart(ctxLine, {
+  type: 'line',
+  data: {
+    labels: meses,
+    datasets: [{
+      label: 'Valor (R$)',
+      data: valorMes,
+      borderColor: 'rgba(34,197,94,1)',
+      backgroundColor: gradLine,
+      borderWidth: 2.5,
+      pointBackgroundColor: 'rgba(34,197,94,1)',
+      pointRadius: 4,
+      fill: true,
+      tension: 0.4
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.04)' } }
+    }
+  }
+});
 </script>
 {% endblock %}

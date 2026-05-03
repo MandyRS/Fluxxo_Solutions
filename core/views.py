@@ -2,7 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from .models import UserEmpresa
 from django.contrib.auth import logout
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.db.models import Q
 from django.db.models import Sum, F, FloatField
@@ -76,8 +77,8 @@ def selecionar_empresa(request):
     if request.method == 'POST':
         empresa_id = request.POST.get('empresa_id')
         if empresa_id:
-            request.session['empresa_id'] = empresa_id
-            return redirect('core:dashboard')  # ou para onde quiser depois da escolha
+            request.session['empresa_id'] = int(empresa_id)
+            return redirect('core:dashboard')
 
     return render(request, 'selecionar_empresa.html', {
         'empresas': empresas_vinculadas  # 👈 nome da variável usada no template
@@ -108,7 +109,9 @@ def get_empresa_da_sessao(request):
 def dashboard(request):
     empresa = get_empresa_da_sessao(request)
     if not empresa:
-        return render(request, "core/erro.html", {"mensagem": "Nenhuma empresa associada."})
+        return render(request, "erro.html", {"mensagem": "Nenhuma empresa associada."})
+
+    from .models import ItemEstoque, EntradaComercial, ItemEntradaComercial, Banco, LancamentoBancario
 
     # Contadores básicos
     clientes = empresa.cliente_set.count()
@@ -116,7 +119,7 @@ def dashboard(request):
     servicos = empresa.servico_set.count()
     orcamentos = empresa.orcamento_set.all()
 
-    # Soma total de todos os orçamentos (somando itens)
+    # Valor total orçamentos
     orcamentos_valor_total = (
         ItemOrcamento.objects.filter(orcamento__empresa=empresa)
         .aggregate(total=Sum(F("quantidade") * F("preco_unitario"), output_field=FloatField()))
@@ -126,23 +129,100 @@ def dashboard(request):
     hoje = timezone.now().date()
     limite_alerta = hoje + timedelta(days=3)
     alerta_orcamentos = orcamentos.filter(previsao_entrega__range=[hoje, limite_alerta])
+
+    # Produtos com estoque crítico — mesma lógica do template de estoque: quantidade <= 10
+    itens_estoque = ItemEstoque.objects.filter(empresa=empresa)
+    total_estoque_itens = itens_estoque.count()
+    produtos_criticos = ItemEstoque.objects.filter(
+        empresa=empresa,
+        quantidade__lte=10
+    ).order_by('quantidade')
+
+    # Produtos com maior estoque (top 6)
+    produtos_maior_estoque = ItemEstoque.objects.filter(
+        empresa=empresa, quantidade__gt=0
+    ).order_by('-quantidade')[:6]
+
+    # Top produtos que mais saíram (MovimentacaoEstoque tipo saida)
+    from .models import MovimentacaoEstoque
+    from django.db.models import Sum as _Sum
+    top_saidas = (
+        MovimentacaoEstoque.objects.filter(item__empresa=empresa, tipo='saida')
+        .values('item__id', 'item__nome', 'item__unidade')
+        .annotate(total=_Sum('quantidade'))
+        .order_by('-total')[:6]
+    )
+    top_entradas = (
+        MovimentacaoEstoque.objects.filter(item__empresa=empresa, tipo='entrada')
+        .values('item__id', 'item__nome', 'item__unidade')
+        .annotate(total=_Sum('quantidade'))
+        .order_by('-total')[:6]
+    )
+
+    # Orçamentos recentes (últimos 5)
+    orcamentos_recentes = orcamentos.order_by('-criado_em')[:5]
+
+    # Entradas recentes (últimas 5)
+    entradas_recentes = EntradaComercial.objects.filter(empresa=empresa).order_by('-data')[:5]
+
+    # Saldo bancário total
+    bancos = Banco.objects.filter(empresa=empresa)
+    saldo_bancario_total = 0
+    for banco in bancos:
+        saldo = float(banco.saldo_inicial)
+        for lanc in banco.lancamentos.all():
+            if lanc.tipo == 'entrada':
+                saldo += float(lanc.valor)
+            else:
+                saldo -= float(lanc.valor)
+        saldo_bancario_total += saldo
+
+    # Receitas e despesas do mês atual
+    mes_atual = hoje.month
+    ano_atual = hoje.year
+    lancamentos_mes = LancamentoBancario.objects.filter(
+        banco__empresa=empresa, data__month=mes_atual, data__year=ano_atual
+    )
+    receitas_mes = float(lancamentos_mes.filter(tipo='entrada').aggregate(
+        t=Sum('valor', output_field=FloatField()))['t'] or 0)
+    despesas_mes = float(lancamentos_mes.filter(tipo='saida').aggregate(
+        t=Sum('valor', output_field=FloatField()))['t'] or 0)
+    saldo_mes = receitas_mes - despesas_mes
+
+    # Orçamentos do mês atual
+    orcamentos_mes_atual = orcamentos.filter(criado_em__month=mes_atual, criado_em__year=ano_atual)
+    orcamentos_mes_count = orcamentos_mes_atual.count()
+    orcamentos_valor_mes_atual = float(
+        ItemOrcamento.objects.filter(
+            orcamento__empresa=empresa,
+            orcamento__criado_em__month=mes_atual,
+            orcamento__criado_em__year=ano_atual,
+        ).aggregate(total=Sum(F("quantidade") * F("preco_unitario"), output_field=FloatField()))["total"] or 0
+    )
+
+    # Valor total entradas comerciais do mês
+    entradas_mes = EntradaComercial.objects.filter(
+        empresa=empresa, data__month=mes_atual, data__year=ano_atual
+    )
+    itens_entradas_mes = ItemEntradaComercial.objects.filter(entrada__in=entradas_mes)
+    valor_entradas_mes = sum(float(i.quantidade) * float(i.preco_unitario) for i in itens_entradas_mes)
+    entradas_mes_count = entradas_mes.count()
+    fornecedores_mes_count = entradas_mes.exclude(fornecedor=None).values('fornecedor').distinct().count()
+
+    # Gráfico: orçamentos por mês
     meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
     orcamentos_mes = []
     orcamentos_valor_mes = []
-
     for i in range(1, 13):
-        # quantidade de orçamentos por mês
-        orcs_mes = orcamentos.filter(criado_em__month=i)
+        orcs_mes = orcamentos.filter(criado_em__month=i, criado_em__year=ano_atual)
         orcamentos_mes.append(orcs_mes.count())
-
-        # soma dos valores dos itens por mês
         valor_mes = (
             ItemOrcamento.objects.filter(
                 orcamento__empresa=empresa,
-                orcamento__criado_em__month=i
+                orcamento__criado_em__month=i,
+                orcamento__criado_em__year=ano_atual,
             ).aggregate(total=Sum(F("quantidade") * F("preco_unitario"), output_field=FloatField()))
         )["total"] or 0
-
         orcamentos_valor_mes.append(float(valor_mes))
 
     context = {
@@ -153,6 +233,23 @@ def dashboard(request):
         "orcamentos": orcamentos.count(),
         "orcamentos_valor_total": round(orcamentos_valor_total, 2),
         "alerta_orcamentos": alerta_orcamentos,
+        "produtos_maior_estoque": produtos_maior_estoque,
+        "top_saidas": list(top_saidas),
+        "top_entradas": list(top_entradas),
+        "orcamentos_recentes": orcamentos_recentes,
+        "entradas_recentes": entradas_recentes,
+        "produtos_criticos": produtos_criticos,
+        "total_estoque_itens": total_estoque_itens,
+        "saldo_bancario_total": round(saldo_bancario_total, 2),
+        "saldo_mes": round(saldo_mes, 2),
+        "receitas_mes": round(receitas_mes, 2),
+        "despesas_mes": round(despesas_mes, 2),
+        "orcamentos_mes_count": orcamentos_mes_count,
+        "orcamentos_valor_mes_atual": round(orcamentos_valor_mes_atual, 2),
+        "valor_entradas_mes": round(valor_entradas_mes, 2),
+        "entradas_mes_count": entradas_mes_count,
+        "fornecedores_mes_count": fornecedores_mes_count,
+        "hoje": hoje,
         "meses": json.dumps(meses),
         "orcamentos_mes": json.dumps(orcamentos_mes),
         "orcamentos_valor_mes": json.dumps(orcamentos_valor_mes),
@@ -176,63 +273,56 @@ def fluxo_bancario_dashboard(request):
     empresa = get_empresa_da_sessao(request)
     bancos = Banco.objects.filter(empresa=empresa)
     banco_id = request.GET.get('banco')
-    data_inicial = request.GET.get('data_inicial') or ''
-    data_final = request.GET.get('data_final') or ''
+    data_inicial = request.GET.get('data_inicial', '')
+    data_final = request.GET.get('data_final', '')
     banco_selecionado = None
     lancamentos = []
     saldo_anterior = 0
     saldo_atual = 0
-    totais_classificacao = {}
-    total_geral = 0
-
-    def calcular_variacao(registros):
-        return sum(
-            registro.valor if registro.tipo == 'entrada' else -registro.valor
-            for registro in registros
-        )
+    total_entradas = 0
+    total_saidas = 0
 
     if banco_id:
         banco_selecionado = get_object_or_404(Banco, id=banco_id, empresa=empresa)
-        lancamentos_base = banco_selecionado.lancamentos.all()
-        saldo_anterior = banco_selecionado.saldo_inicial
+        todos = banco_selecionado.lancamentos.order_by('data', 'id')
 
+        # Saldo anterior = saldo_inicial + lançamentos anteriores ao período
+        saldo_anterior = float(banco_selecionado.saldo_inicial)
         if data_inicial:
-            saldo_anterior += calcular_variacao(lancamentos_base.filter(data__lt=data_inicial))
+            for l in todos.filter(data__lt=data_inicial):
+                saldo_anterior += float(l.valor) if l.tipo == 'entrada' else -float(l.valor)
+        else:
+            saldo_anterior = float(banco_selecionado.saldo_inicial)
 
+        # Lançamentos do período
+        lancamentos = todos
         if data_inicial:
-            lancamentos_base = lancamentos_base.filter(data__gte=data_inicial)
+            lancamentos = lancamentos.filter(data__gte=data_inicial)
         if data_final:
-            lancamentos_base = lancamentos_base.filter(data__lte=data_final)
+            lancamentos = lancamentos.filter(data__lte=data_final)
 
-        lancamentos = lancamentos_base.order_by('data', 'id')
-        saldo_atual = saldo_anterior + calcular_variacao(lancamentos)
+        for l in lancamentos:
+            if l.tipo == 'entrada':
+                total_entradas += float(l.valor)
+            else:
+                total_saidas += float(l.valor)
 
-        classificacoes = [
-            ('despesa', 'Despesa'),
-            ('investimento', 'Investimento'),
-            ('adiantamento_socio', 'Adiantamento de Sócio'),
-            ('distribuicao_lucro', 'Distribuição de Lucro'),
-            ('outros', 'Outros'),
-        ]
-        for chave, label in classificacoes:
-            total = sum(
-                l.valor if l.tipo == 'entrada' else -l.valor
-                for l in lancamentos
-                if l.classificacao == chave
-            )
-            totais_classificacao[chave] = {'label': label, 'total': total}
-        total_geral = sum(v['total'] for v in totais_classificacao.values())
+        saldo_atual = saldo_anterior + total_entradas - total_saidas
+
+        # Se não há filtro de data, saldo_anterior é o saldo_inicial configurado
+        if not data_inicial:
+            saldo_anterior = float(banco_selecionado.saldo_inicial)
 
     return render(request, 'fluxo_bancario.html', {
         'bancos': bancos,
         'banco_selecionado': banco_selecionado,
         'lancamentos': lancamentos,
+        'saldo_anterior': round(saldo_anterior, 2),
+        'saldo_atual': round(saldo_atual, 2),
+        'total_entradas': round(total_entradas, 2),
+        'total_saidas': round(total_saidas, 2),
         'data_inicial': data_inicial,
         'data_final': data_final,
-        'saldo_anterior': saldo_anterior,
-        'saldo_atual': saldo_atual,
-        'totais_classificacao': totais_classificacao,
-        'total_geral': total_geral,
     })
 
 
@@ -261,8 +351,11 @@ def editar_lancamento_bancario(request, id):
     if request.method == 'POST':
         form = LancamentoBancarioForm(request.POST, instance=lancamento)
         if form.is_valid():
-            form.save()
-            return redirect(f"/fluxo-bancario/?banco={lancamento.banco.id}")
+            lanc = form.save(commit=False)
+            if lanc.banco.empresa != empresa:
+                return HttpResponse('Banco inválido', status=403)
+            lanc.save()
+            return redirect(f"/fluxo-bancario/?banco={lanc.banco.id}")
     else:
         form = LancamentoBancarioForm(instance=lancamento)
     return render(request, 'novo_lancamento_bancario.html', {
@@ -273,8 +366,9 @@ def editar_lancamento_bancario(request, id):
 
 
 @login_required
-@require_POST
 def excluir_lancamento_bancario(request, id):
+    if request.method != 'POST':
+        return HttpResponse('Método não permitido', status=405)
     empresa = get_empresa_da_sessao(request)
     lancamento = get_object_or_404(LancamentoBancario, id=id, banco__empresa=empresa)
     banco_id = lancamento.banco.id
@@ -850,12 +944,20 @@ def obter_orcamento(request, orcamento_id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido'}, status=405)
 
     orc = get_object_or_404(Orcamento, id=orcamento_id)
-    itens = ItemOrcamento.objects.filter(orcamento=orc)
+    itens = ItemOrcamento.objects.filter(orcamento=orc).select_related(
+        'produto', 'produto__subcategoria', 'produto__subcategoria__categoria',
+        'servico', 'orcamento__cliente'
+    )
 
     data = {
         'id': orc.id,
         'cliente_id': orc.cliente_id,
         'cliente_nome': orc.cliente.razao_social if orc.cliente else '',
+        'cliente_nome_fantasia': orc.cliente.nome_fantasia if orc.cliente else '',
+        'cliente_cpf_cnpj': orc.cliente.cpf_cnpj if orc.cliente else '',
+        'cliente_email': orc.cliente.email if orc.cliente else '',
+        'cliente_telefone': orc.cliente.telefone if orc.cliente else '',
+        'cliente_endereco': orc.cliente.endereco if orc.cliente else '',
         'solicitante': orc.solicitante,
         'previsao_entrega': orc.previsao_entrega.strftime('%Y-%m-%d') if orc.previsao_entrega else '',
         'vencimento': orc.vencimento.strftime('%Y-%m-%d') if orc.vencimento else '',
@@ -870,6 +972,8 @@ def obter_orcamento(request, orcamento_id):
                 'tipo': 'produto' if i.produto else 'servico',
                 'quantidade': float(i.quantidade),
                 'valor_unitario': float(i.preco_unitario),
+                'categoria_id': (i.produto.subcategoria.categoria.id if i.produto and i.produto.subcategoria and i.produto.subcategoria.categoria else None),
+                'subcategoria_id': (i.produto.subcategoria.id if i.produto and i.produto.subcategoria else None),
             }
             for i in itens
         ]
@@ -1966,6 +2070,22 @@ def detalhe_entrada_comercial(request, id):
     empresa = get_empresa_da_sessao(request)
     entrada = get_object_or_404(EntradaComercial, id=id, empresa=empresa)
     itens = entrada.itens.select_related('produto').all()
+
+    itens_data = []
+    for i in itens:
+        try:
+            est = ItemEstoque.objects.get(empresa=empresa, produto=i.produto)
+            estoque_atual = float(est.quantidade)
+        except ItemEstoque.DoesNotExist:
+            estoque_atual = None
+        itens_data.append({
+            'produto': i.produto.nome,
+            'produto_id': i.produto.id,
+            'quantidade': str(i.quantidade),
+            'preco_unitario': str(i.preco_unitario),
+            'estoque_atual': estoque_atual,
+        })
+
     return JsonResponse({
         'entrada': {
             'id': entrada.id,
@@ -1974,15 +2094,7 @@ def detalhe_entrada_comercial(request, id):
             'fornecedor': entrada.fornecedor.nome if entrada.fornecedor else None,
             'fornecedor_id': entrada.fornecedor.id if entrada.fornecedor else None,
             'observacao': entrada.observacao,
-            'itens': [
-                {
-                    'produto': i.produto.nome,
-                    'produto_id': i.produto.id,
-                    'quantidade': str(i.quantidade),
-                    'preco_unitario': str(i.preco_unitario),
-                }
-                for i in itens
-            ],
+            'itens': itens_data,
         }
     })
 
@@ -2217,4 +2329,39 @@ def excluir_fornecedor_ajax(request, id):
     f = get_object_or_404(Fornecedor, id=id, empresa=empresa)
     f.delete()
     return JsonResponse({'status': 'ok'})
+
+
+@login_required
+def _aplicar_classes_senha(form):
+    attrs = {'class': 'form-control', 'autocomplete': 'off'}
+    form.fields['old_password'].widget.attrs.update(attrs)
+    form.fields['new_password1'].widget.attrs.update(attrs)
+    form.fields['new_password2'].widget.attrs.update(attrs)
+    return form
+
+@login_required
+def perfil(request):
+    user = request.user
+    form_senha = _aplicar_classes_senha(PasswordChangeForm(user))
+    senha_alterada = False
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'trocar_senha':
+            form_senha = _aplicar_classes_senha(PasswordChangeForm(user, request.POST))
+            if form_senha.is_valid():
+                form_senha.save()
+                update_session_auth_hash(request, form_senha.user)
+                senha_alterada = True
+                form_senha = _aplicar_classes_senha(PasswordChangeForm(user))
+
+    return render(request, 'perfil.html', {
+        'form_senha': form_senha,
+        'senha_alterada': senha_alterada,
+    })
+
+
+@login_required
+def documentacao(request):
+    return render(request, 'documentacao.html')
 

@@ -24,7 +24,7 @@
         </div>
       </div>
       <table class="table table-striped table-hover align-middle" id="tabelaEntradas">
-        <thead class="table-light">
+        <thead class="">
           <tr>
             <th>Data</th>
             <th>Fornecedor</th>
@@ -62,7 +62,7 @@
         <button id="btnCriarOrcamento" class="btn btn-primary btn-sm">+ Novo Orçamento</button>
       </div>
       <table class="table table-striped table-hover align-middle">
-        <thead class="table-light">
+        <thead class="">
           <tr><th>#</th><th>Cliente</th><th>Previsão</th><th>Solicitante</th><th>Total (R$)</th><th>Ações</th></tr>
         </thead>
         <tbody>
@@ -125,7 +125,7 @@
             <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddProdutoEntrada">+ Adicionar Produto</button>
           </div>
           <table class="table table-bordered align-middle" id="tabelaItensEntrada">
-            <thead class="table-light">
+            <thead class="">
               <tr>
                 <th>Produto</th>
                 <th>Estoque Atual</th>
@@ -874,14 +874,22 @@ $(function() {
       const o = res.orcamento;
       editandoId = o.id;
       $(".modal-title", "#modalOrcamento").text("Editar Orçamento #" + o.id);
-      $("#clienteInput").val(o.cliente_nome); $("#clienteId").val(o.cliente_id);
+
+      // Dados do cliente
+      $("#clienteInput").val(o.cliente_nome);
+      $("#clienteId").val(o.cliente_id);
+      $("#nome_fantasia").val(o.cliente_nome_fantasia || '');
+      $("#cpf_cnpj").val(o.cliente_cpf_cnpj || '');
+      $("#email").val(o.cliente_email || '');
+      $("#telefone").val(o.cliente_telefone || '');
+      $("#endereco").val(o.cliente_endereco || '');
+
       $("#solicitante").val(o.solicitante); $("#previsao_entrega").val(o.previsao_entrega);
       $("#vencimento").val(o.vencimento); $("#forma_pagamento").val(o.forma_pagamento);
       $("#responsavel").val(o.responsavel); $("#desconto").val(o.desconto);
       $("#observacao").val(o.observacao);
       $("#tabelaItens tbody").empty();
 
-      // Carregar itens com promises para preencher selects corretamente
       const promises = o.itens.map(function(i) {
         return new Promise(function(resolve) {
           const $linha = criarLinhaItem();
@@ -897,15 +905,43 @@ $(function() {
             $linha.find('.inputServico').show().val(i.nome);
             resolve($linha);
           } else {
-            // Produto: buscar produto por ID para saber categoria/subcategoria
-            $.get('/estoque/autocomplete-produto/', {q: i.nome}, function(resp) {
-              // Adiciona opção do produto no select de produto
+            // Popular categoria
+            if (i.categoria_id) {
+              $linha.find('.selectCatItem').val(i.categoria_id);
+              // Popular subcategorias para esta categoria
+              $linha.find('.selectSubcatItem').html(buildSubcatOptions(i.categoria_id));
+              if (i.subcategoria_id) {
+                $linha.find('.selectSubcatItem').val(i.subcategoria_id);
+              }
+            }
+            // Buscar produtos da subcategoria ou categoria e selecionar o produto
+            var subcatId = i.subcategoria_id;
+            var catId = i.categoria_id;
+            var urlProd = subcatId
+              ? '/estoque/listar-produtos-subcategoria/?subcategoria_id=' + subcatId
+              : (catId ? '/estoque/listar-produtos-categoria/?categoria=' + catId : null);
+
+            if (urlProd) {
+              $.get(urlProd, function(resp) {
+                var html = '<option value="">Selecione...</option>';
+                (resp.produtos || []).forEach(function(p) {
+                  html += '<option value="' + p.id + '" data-preco="' + p.preco_unitario + '">' + p.nome + '</option>';
+                });
+                $linha.find('.selectProdItem').html(html).val(i.id_item).show();
+                resolve($linha);
+              }).fail(function() {
+                // Fallback: só mostrar o produto sem categoria
+                $linha.find('.selectProdItem').html(
+                  '<option value="' + i.id_item + '">' + i.nome + '</option>'
+                ).val(i.id_item).show();
+                resolve($linha);
+              });
+            } else {
               $linha.find('.selectProdItem').html(
                 '<option value="' + i.id_item + '">' + i.nome + '</option>'
-              );
-              $linha.find('.selectProdItem').val(i.id_item);
+              ).val(i.id_item).show();
               resolve($linha);
-            }).fail(function() { resolve($linha); });
+            }
           }
         });
       });

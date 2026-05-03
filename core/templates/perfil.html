@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block topbar_title %}Meu Perfil{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+<div class="col-12 col-xl-8">
+<div class="row g-4">
+
+  <!-- Card dados do usuário -->
+  <div class="col-12">
+    <div class="card p-4">
+      <div class="d-flex align-items-center gap-4 mb-4">
+        <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#06b6d4);
+                    display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#fff;flex-shrink:0;">
+          {{ user.username|slice:":1"|upper }}
+        </div>
+        <div>
+          <h5 class="mb-0 fw-bold" style="color:#f1f5f9">{{ user.get_full_name|default:user.username }}</h5>
+          <span class="small" style="color:#64748b">@{{ user.username }}</span>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+            <div class="small mb-1" style="color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem">Usuário</div>
+            <div style="color:#e2e8f0;font-weight:500">{{ user.username }}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+            <div class="small mb-1" style="color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem">E-mail</div>
+            <div style="color:#e2e8f0;font-weight:500">{{ user.email|default:"Não informado" }}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+            <div class="small mb-1" style="color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem">Nome completo</div>
+            <div style="color:#e2e8f0;font-weight:500">{{ user.get_full_name|default:"Não informado" }}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+            <div class="small mb-1" style="color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem">Membro desde</div>
+            <div style="color:#e2e8f0;font-weight:500">{{ user.date_joined|date:"d/m/Y" }}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+            <div class="small mb-1" style="color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem">Último acesso</div>
+            <div style="color:#e2e8f0;font-weight:500">{{ user.last_login|date:"d/m/Y H:i"|default:"—" }}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+            <div class="small mb-1" style="color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem">Nível de acesso</div>
+            <div style="color:#e2e8f0;font-weight:500">
+              {% if user.is_superuser %}
+                <span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)">Superusuário</span>
+              {% elif user.is_staff %}
+                <span class="badge" style="background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.3)">Staff</span>
+              {% else %}
+                <span class="badge" style="background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3)">Usuário padrão</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card troca de senha -->
+  <div class="col-12" id="trocar-senha">
+    <div class="card p-4">
+      <h6 class="fw-bold mb-3" style="color:#f1f5f9">
+        <i class="bi bi-shield-lock me-2" style="color:#6366f1"></i>Alterar senha
+      </h6>
+
+      {% if senha_alterada %}
+      <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Senha alterada com sucesso!</span>
+      </div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="trocar_senha">
+
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Senha atual</label>
+            {{ form_senha.old_password }}
+            {% if form_senha.old_password.errors %}
+              <div class="small mt-1" style="color:#f87171">{{ form_senha.old_password.errors|striptags }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nova senha</label>
+            {{ form_senha.new_password1 }}
+            {% if form_senha.new_password1.errors %}
+              <div class="small mt-1" style="color:#f87171">{{ form_senha.new_password1.errors|striptags }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Confirmar nova senha</label>
+            {{ form_senha.new_password2 }}
+            {% if form_senha.new_password2.errors %}
+              <div class="small mt-1" style="color:#f87171">{{ form_senha.new_password2.errors|striptags }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-lg me-1"></i>Salvar nova senha
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+{% endblock %}

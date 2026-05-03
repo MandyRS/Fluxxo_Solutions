@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% block topbar_title %}Documentação{% endblock %}
+
+{% block content %}
+<style>
+  .doc-section { scroll-margin-top: 80px; }
+  .doc-card {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: border-color .2s;
+  }
+  .doc-card:hover { border-color: rgba(99,102,241,.35); }
+  .doc-card h6 { color: #a5b4fc; font-weight: 700; margin-bottom: .4rem; }
+  .doc-card p, .doc-card li { color: #94a3b8; font-size: .9rem; line-height: 1.6; }
+  .doc-card ul { padding-left: 1.2rem; margin: 0; }
+  .doc-nav a {
+    display: block; padding: 8px 12px; border-radius: 8px;
+    color: #94a3b8; font-size: .85rem; text-decoration: none; font-weight: 500;
+    transition: background .15s, color .15s;
+  }
+  .doc-nav a:hover { background: rgba(255,255,255,.06); color: #e2e8f0; }
+  .doc-nav a.active { background: rgba(99,102,241,.15); color: #a5b4fc; }
+  .section-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: #6366f1; margin-bottom: .75rem;
+  }
+  .section-badge::before {
+    content: ''; display: inline-block; width: 3px; height: 16px;
+    background: #6366f1; border-radius: 2px;
+  }
+  .step { display: flex; gap: 14px; margin-bottom: .75rem; }
+  .step-num {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(99,102,241,.2); border: 1px solid rgba(99,102,241,.4);
+    color: #a5b4fc; font-size: .75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+
+<div class="row g-4">
+
+  <!-- Navegação lateral -->
+  <div class="col-lg-3 d-none d-lg-block">
+    <div style="position:sticky;top:90px">
+      <div class="doc-nav">
+        <div style="color:#64748b;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:8px 12px 4px">Módulos</div>
+        <a href="#visao-geral"><i class="bi bi-grid me-2"></i>Visão Geral</a>
+        <a href="#dashboard"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+        <a href="#comercial"><i class="bi bi-shop me-2"></i>Comercial</a>
+        <a href="#orcamentos"><i class="bi bi-file-earmark-text me-2"></i>Orçamentos</a>
+        <a href="#fluxo"><i class="bi bi-cash-coin me-2"></i>Fluxo Bancário</a>
+        <a href="#estoque"><i class="bi bi-boxes me-2"></i>Estoque</a>
+        <a href="#configuracoes"><i class="bi bi-gear me-2"></i>Configurações</a>
+        <a href="#perfil"><i class="bi bi-person-circle me-2"></i>Perfil</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conteúdo -->
+  <div class="col-lg-9">
+
+    <div class="mb-4">
+      <h4 class="fw-bold mb-1" style="color:#f1f5f9">
+        <i class="bi bi-book me-2" style="color:#6366f1"></i>Documentação do Sistema
+      </h4>
+      <p style="color:#64748b">Guia completo de uso do <strong style="color:#a5b4fc">ControleFlexx</strong> — todos os módulos explicados.</p>
+    </div>
+
+    <!-- Visão Geral -->
+    <div class="doc-section" id="visao-geral">
+      <div class="section-badge">Visão Geral</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-info-circle me-2"></i>O que é o ControleFlexx?</h6>
+        <p>O <strong style="color:#e2e8f0">ControleFlexx</strong> é um sistema de gestão empresarial voltado para pequenas e médias empresas. Ele centraliza em um único lugar o controle financeiro, estoque, comercial, orçamentos e configurações da empresa.</p>
+      </div>
+      <div class="doc-card">
+        <h6><i class="bi bi-diagram-3 me-2"></i>Estrutura do sistema</h6>
+        <ul>
+          <li><strong style="color:#e2e8f0">Empresa</strong> — ao fazer login, selecione a empresa ativa. Todos os dados são isolados por empresa.</li>
+          <li><strong style="color:#e2e8f0">Usuários</strong> — cada usuário pode acessar múltiplas empresas conforme permissão.</li>
+          <li><strong style="color:#e2e8f0">Módulos</strong> — Dashboard, Comercial, Fluxo Bancário, Estoque, Configurações e Suporte.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="doc-section mt-4" id="dashboard">
+      <div class="section-badge">Dashboard</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-speedometer2 me-2"></i>Painel Principal</h6>
+        <p>A tela inicial após o login mostra um resumo executivo da empresa com cards de KPI e painéis de dados.</p>
+        <ul>
+          <li><strong style="color:#e2e8f0">Saldo Bancário</strong> — receitas, despesas e saldo total do mês atual.</li>
+          <li><strong style="color:#e2e8f0">Orçamentos</strong> — quantidade e valor total dos orçamentos do mês.</li>
+          <li><strong style="color:#e2e8f0">Compras do Mês</strong> — entradas de produtos e fornecedores ativos.</li>
+          <li><strong style="color:#e2e8f0">Estoque Crítico</strong> — produtos abaixo do nível crítico são destacados em amarelo.</li>
+          <li><strong style="color:#e2e8f0">Gráficos</strong> — saídas, entradas e estoque atual por produto.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Comercial -->
+    <div class="doc-section mt-4" id="comercial">
+      <div class="section-badge">Comercial</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-shop me-2"></i>Módulo Comercial</h6>
+        <p>Gerencia as movimentações comerciais da empresa, divididas em duas abas:</p>
+        <ul>
+          <li><strong style="color:#e2e8f0">Entradas de Produtos</strong> — registro de compras e recebimentos de fornecedores. Cada entrada contém data, fornecedor, itens e quantidades.</li>
+          <li><strong style="color:#e2e8f0">Saídas (Orçamentos)</strong> — lista os orçamentos aprovados como saídas comerciais.</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h6><i class="bi bi-plus-circle me-2"></i>Registrar nova entrada</h6>
+        <div class="step"><div class="step-num">1</div><div style="color:#94a3b8">Clique em <strong style="color:#e2e8f0">+ Nova Entrada</strong>.</div></div>
+        <div class="step"><div class="step-num">2</div><div style="color:#94a3b8">Selecione o fornecedor e a data.</div></div>
+        <div class="step"><div class="step-num">3</div><div style="color:#94a3b8">Adicione os produtos com quantidade e preço unitário.</div></div>
+        <div class="step"><div class="step-num">4</div><div style="color:#94a3b8">Clique em <strong style="color:#e2e8f0">Salvar</strong>. O estoque é atualizado automaticamente.</div></div>
+      </div>
+      <div class="doc-card">
+        <h6><i class="bi bi-bar-chart me-2"></i>Relatório por Fornecedor</h6>
+        <p>Clique em <strong style="color:#e2e8f0">Relatório por Fornecedor</strong> para visualizar o total de entradas agrupadas por fornecedor no período.</p>
+      </div>
+    </div>
+
+    <!-- Orçamentos -->
+    <div class="doc-section mt-4" id="orcamentos">
+      <div class="section-badge">Orçamentos</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-file-earmark-text me-2"></i>Gerenciamento de Orçamentos</h6>
+        <p>Crie, edite, visualize e imprima orçamentos para seus clientes.</p>
+        <ul>
+          <li><strong style="color:#e2e8f0">Campos principais</strong> — cliente, data de emissão, previsão de entrega, solicitante, observações e itens.</li>
+          <li><strong style="color:#e2e8f0">Itens do orçamento</strong> — produtos e serviços com quantidade e preço unitário. O total é calculado automaticamente.</li>
+          <li><strong style="color:#e2e8f0">Impressão</strong> — botão de impressão gera uma versão formatada para PDF ou papel.</li>
+          <li><strong style="color:#e2e8f0">Status</strong> — orçamentos podem ser editados ou excluídos enquanto não finalizados.</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h6><i class="bi bi-plus-circle me-2"></i>Criar orçamento</h6>
+        <div class="step"><div class="step-num">1</div><div style="color:#94a3b8">Clique em <strong style="color:#e2e8f0">+ Novo Orçamento</strong>.</div></div>
+        <div class="step"><div class="step-num">2</div><div style="color:#94a3b8">Busque o cliente pelo nome (autocomplete).</div></div>
+        <div class="step"><div class="step-num">3</div><div style="color:#94a3b8">Adicione produtos/serviços e quantidades.</div></div>
+        <div class="step"><div class="step-num">4</div><div style="color:#94a3b8">Salve. O número do orçamento é gerado automaticamente.</div></div>
+      </div>
+    </div>
+
+    <!-- Fluxo Bancário -->
+    <div class="doc-section mt-4" id="fluxo">
+      <div class="section-badge">Fluxo Bancário</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-cash-coin me-2"></i>Controle Financeiro</h6>
+        <p>Acompanhe entradas, saídas e saldo de cada banco cadastrado.</p>
+        <ul>
+          <li><strong style="color:#e2e8f0">Bancos</strong> — cada banco tem nome, agência, conta e saldo inicial.</li>
+          <li><strong style="color:#e2e8f0">Lançamentos</strong> — registros de entrada ou saída vinculados a um banco.</li>
+          <li><strong style="color:#e2e8f0">Saldo Anterior</strong> — saldo antes do período filtrado.</li>
+          <li><strong style="color:#e2e8f0">Saldo Atual</strong> — saldo anterior + entradas − saídas do período.</li>
+          <li><strong style="color:#e2e8f0">Filtros</strong> — filtre por banco e intervalo de datas.</li>
+          <li><strong style="color:#e2e8f0">Importação Excel</strong> — importe lançamentos em massa via planilha.</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h6><i class="bi bi-plus-circle me-2"></i>Registrar lançamento</h6>
+        <div class="step"><div class="step-num">1</div><div style="color:#94a3b8">Clique em <strong style="color:#e2e8f0">Novo Lançamento</strong>.</div></div>
+        <div class="step"><div class="step-num">2</div><div style="color:#94a3b8">Selecione o banco, data, tipo (Entrada/Saída) e valor.</div></div>
+        <div class="step"><div class="step-num">3</div><div style="color:#94a3b8">Adicione uma descrição e salve.</div></div>
+      </div>
+    </div>
+
+    <!-- Estoque -->
+    <div class="doc-section mt-4" id="estoque">
+      <div class="section-badge">Estoque</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-boxes me-2"></i>Controle de Estoque</h6>
+        <p>Monitore a quantidade de cada produto e registre movimentações.</p>
+        <ul>
+          <li><strong style="color:#e2e8f0">Itens de estoque</strong> — vinculados a produtos cadastrados nas Configurações.</li>
+          <li><strong style="color:#e2e8f0">Situação</strong> — Normal, Baixo ou Crítico, conforme os limites definidos no produto.</li>
+          <li><strong style="color:#e2e8f0">Movimentações</strong> — entrada, saída ou perda, com data, quantidade e observação.</li>
+          <li><strong style="color:#e2e8f0">Perda</strong> — registre perdas para manter o histórico sem afetar as entradas.</li>
+          <li><strong style="color:#e2e8f0">Impressão por grupo</strong> — imprima relatórios de estoque por subcategoria.</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h6><i class="bi bi-arrow-left-right me-2"></i>Movimentar estoque</h6>
+        <div class="step"><div class="step-num">1</div><div style="color:#94a3b8">Localize o produto na tabela de estoque.</div></div>
+        <div class="step"><div class="step-num">2</div><div style="color:#94a3b8">Clique em <strong style="color:#e2e8f0">Movimentar</strong>.</div></div>
+        <div class="step"><div class="step-num">3</div><div style="color:#94a3b8">Selecione o tipo (Entrada/Saída/Perda), quantidade e data.</div></div>
+        <div class="step"><div class="step-num">4</div><div style="color:#94a3b8">Confirme. O saldo é atualizado instantaneamente.</div></div>
+      </div>
+    </div>
+
+    <!-- Configurações -->
+    <div class="doc-section mt-4" id="configuracoes">
+      <div class="section-badge">Configurações</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-gear me-2"></i>Cadastros Base</h6>
+        <p>Gerencie todos os cadastros que alimentam o sistema.</p>
+        <ul>
+          <li><strong style="color:#e2e8f0">Clientes</strong> — razão social, nome fantasia, CPF/CNPJ, telefone, e-mail e endereço.</li>
+          <li><strong style="color:#e2e8f0">Produtos</strong> — organizados por categorias e subcategorias. Cada produto tem código, nome, peso, unidade, preço unitário e limites de estoque (crítico).</li>
+          <li><strong style="color:#e2e8f0">Serviços</strong> — nome, descrição e preço. Utilizados nos orçamentos.</li>
+          <li><strong style="color:#e2e8f0">Bancos</strong> — nome, agência, conta e saldo inicial para o fluxo bancário.</li>
+          <li><strong style="color:#e2e8f0">Fornecedores</strong> — nome, CNPJ/CPF, telefone, e-mail e endereço.</li>
+          <li><strong style="color:#e2e8f0">Categorias</strong> — organização hierárquica com categorias e subcategorias para os produtos.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Perfil -->
+    <div class="doc-section mt-4 mb-2" id="perfil">
+      <div class="section-badge">Perfil</div>
+      <div class="doc-card">
+        <h6><i class="bi bi-person-circle me-2"></i>Meu Perfil</h6>
+        <p>Acesse seu perfil clicando no seu nome no topo da tela (canto superior direito).</p>
+        <ul>
+          <li><strong style="color:#e2e8f0">Dados do usuário</strong> — nome, e-mail, data de cadastro, último acesso e nível de permissão.</li>
+          <li><strong style="color:#e2e8f0">Alterar senha</strong> — informe a senha atual e a nova senha duas vezes para confirmar.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Destaca item ativo no menu lateral ao rolar
+  (function(){
+    var links = document.querySelectorAll('.doc-nav a');
+    var sections = Array.from(links).map(function(l){ return document.querySelector(l.getAttribute('href')); });
+    window.addEventListener('scroll', function(){
+      var pos = window.scrollY + 120;
+      sections.forEach(function(sec, i){
+        if(!sec) return;
+        if(sec.offsetTop <= pos && sec.offsetTop + sec.offsetHeight > pos){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          links[i].classList.add('active');
+        }
+      });
+    }, { passive: true });
+  })();
+</script>
+{% endblock %}

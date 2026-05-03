@@ -1,24 +1,193 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="container mt-5" style="max-width: 400px;">
-  <h3 class="text-center mb-4">Selecione a Empresa</h3>
-  <form method="post">
-    {% csrf_token %}
-    {% for ue in empresas %}
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="empresa_id"
-               id="empresa{{ ue.empresa.id }}" value="{{ ue.empresa.id }}" required>
-        <label class="form-check-label" for="empresa{{ ue.empresa.id }}">
-          {{ ue.empresa.nome }}
-        </label>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ControleFlexx | Selecionar Empresa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent: #6366f1;
+      --accent2: #06b6d4;
+      --dark: #0a0f1e;
+      --card-bg: rgba(255,255,255,.05);
+      --card-border: rgba(255,255,255,.09);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: fixed; border-radius: 50%;
+      filter: blur(120px); opacity: .18;
+      pointer-events: none; z-index: 0;
+    }
+    .blob-1 { width: 500px; height: 500px; background: var(--accent); top: -150px; right: -100px; }
+    .blob-2 { width: 400px; height: 400px; background: var(--accent2); bottom: -100px; left: -80px; }
+
+    .card {
+      position: relative; z-index: 1;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 36px;
+      width: 100%; max-width: 420px;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 40px 80px rgba(0,0,0,.4);
+      animation: popIn .5s cubic-bezier(.22,1,.36,1) both;
+      margin: 20px;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.94) translateY(20px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .logo {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px;
+      background: linear-gradient(135deg, #a5b4fc, #67e8f9);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      display: inline-block; margin-bottom: 24px;
+    }
+    .logo span { font-weight: 300; }
+
+    .card-header { margin-bottom: 24px; }
+    .card-header h2 { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .card-header p  { font-size: .83rem; color: var(--muted); }
+
+    /* ── EMPRESA OPTION ── */
+    .empresa-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+
+    .empresa-option input[type="radio"] { display: none; }
+
+    .empresa-option label {
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      color: var(--text);
+      font-size: .9rem; font-weight: 500;
+    }
+    .empresa-option label:hover {
+      background: rgba(99,102,241,.08);
+      border-color: rgba(99,102,241,.3);
+    }
+    .empresa-option input[type="radio"]:checked + label {
+      background: rgba(99,102,241,.12);
+      border-color: rgba(99,102,241,.6);
+      color: #fff;
+    }
+    .empresa-option input[type="radio"]:checked + label .emp-icon {
+      background: rgba(99,102,241,.25);
+      color: #a5b4fc;
+    }
+
+    .emp-icon {
+      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      transition: background .2s, color .2s;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center; padding: 20px 0;
+      color: var(--muted); font-size: .88rem;
+    }
+    .empty-state i { font-size: 2rem; display: block; margin-bottom: 10px; opacity: .5; }
+
+    /* ── BUTTON ── */
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none;
+      padding: 13px;
+      border-radius: 10px;
+      font-size: .95rem; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(99,102,241,.3);
+      transition: opacity .2s, transform .2s;
+    }
+    .btn-submit:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    .btn-back {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      padding: 11px;
+      border-radius: 10px;
+      font-size: .88rem; font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background .2s, border-color .2s, color .2s;
+    }
+    .btn-back:hover { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.18); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <div class="card">
+    <div class="logo">Controle<span>Flexx</span></div>
+
+    <div class="card-header">
+      <h2>Selecionar empresa</h2>
+      <p>Escolha a empresa que deseja acessar</p>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="empresa-list">
+        {% for ue in empresas %}
+        <div class="empresa-option">
+          <input type="radio" name="empresa_id" id="emp{{ ue.empresa.id }}" value="{{ ue.empresa.id }}" required>
+          <label for="emp{{ ue.empresa.id }}">
+            <span class="emp-icon"><i class="bi bi-building"></i></span>
+            {{ ue.empresa.nome }}
+          </label>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+          <i class="bi bi-building-slash"></i>
+          Você não está vinculado a nenhuma empresa.
+        </div>
+        {% endfor %}
       </div>
-    {% empty %}
-      <p>Você não está vinculado a nenhuma empresa.</p>
-    {% endfor %}
-    <button type="submit" class="btn btn-info w-100 mt-3">Continuar</button>
-  </form>
-</div>
-<footer class="bg-dark text-white text-center py-3 mt-5 fixed-bottom">
-  © 2025 Fluxxo Solutions - Todos os direitos reservados.
-</footer>
-{% endblock %}
+
+      {% if empresas %}
+      <button type="submit" class="btn-submit">
+        <i class="bi bi-arrow-right-circle"></i> Continuar
+      </button>
+      {% endif %}
+    </form>
+
+    <button type="button" class="btn-back" onclick="window.location.href='{% url 'core:login' %}'">
+      ← Voltar para login
+    </button>
+  </div>
+
+</body>
+</html>

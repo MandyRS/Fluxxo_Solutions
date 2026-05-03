@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load extra_filters %}
-{% load l10n %}
 {% block content %}
 
 <div class="container mt-4">
@@ -162,18 +161,14 @@
             <td>{{ banco.nome }}</td>
             <td>{{ banco.agencia }}</td>
             <td>{{ banco.conta }}</td>
-            <td>
-              <span class="fw-semibold {% if banco.saldo_inicial < 0 %}text-danger{% else %}text-success{% endif %}">
-                R$ {{ banco.saldo_inicial|br_number:2 }}
-              </span>
-            </td>
+            <td>R$ {{ banco.saldo_inicial }}</td>
             <td>
               <button class="btn btn-sm btn-info btn-editar-banco"
                 data-id="{{ banco.id }}"
                 data-nome="{{ banco.nome }}"
                 data-agencia="{{ banco.agencia }}"
                 data-conta="{{ banco.conta }}"
-                data-saldo_inicial="{{ banco.saldo_inicial|unlocalize }}"
+                data-saldo_inicial="{{ banco.saldo_inicial }}"
                 data-bs-toggle="modal" data-bs-target="#modalBanco">Editar</button>
               <button class="btn btn-sm btn-danger btn-excluir-banco" data-id="{{ banco.id }}">Excluir</button>
             </td>
@@ -406,11 +401,7 @@
           <div class="mb-2"><label>Nome</label><input type="text" name="nome" id="banco-nome" class="form-control" required></div>
           <div class="mb-2"><label>Agência</label><input type="text" name="agencia" id="banco-agencia" class="form-control"></div>
           <div class="mb-2"><label>Conta</label><input type="text" name="conta" id="banco-conta" class="form-control"></div>
-          <div class="mb-2">
-            <label for="banco-saldo_inicial">Saldo Inicial</label>
-            <input type="number" step="0.01" name="saldo_inicial" id="banco-saldo_inicial" class="form-control" placeholder="Ex.: 1500.00 ou -1500.00" required>
-            <div class="form-text">Use valor positivo para saldo disponivel e negativo para saldo devedor.</div>
-          </div>
+          <div class="mb-2"><label>Saldo Inicial</label><input type="number" step="0.01" name="saldo_inicial" id="banco-saldo_inicial" class="form-control" required></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -866,19 +857,20 @@ $(document).ready(function(){
   });
 
   // ---- BANCOS ----
-  $(document).on('click', '.btn-editar-banco', function(){
-    $('#banco-id').val($(this).data('id'));
-    $('#banco-nome').val($(this).data('nome'));
-    $('#banco-agencia').val($(this).data('agencia'));
-    $('#banco-conta').val($(this).data('conta'));
-    $('#banco-saldo_inicial').val($(this).data('saldo_inicial'));
-    $('#modalBanco .modal-title').text('Editar Banco');
-  });
-
-  $('[data-bs-target="#modalBanco"]').not('.btn-editar-banco').click(function(){
-    $('#formBanco')[0].reset();
-    $('#banco-id').val('');
-    $('#modalBanco .modal-title').text('Novo Banco');
+  $('#modalBanco').on('show.bs.modal', function(event) {
+    var btn = $(event.relatedTarget);
+    if (btn.hasClass('btn-editar-banco')) {
+      $('#banco-id').val(btn.attr('data-id'));
+      $('#banco-nome').val(btn.attr('data-nome'));
+      $('#banco-agencia').val(btn.attr('data-agencia'));
+      $('#banco-conta').val(btn.attr('data-conta'));
+      $('#banco-saldo_inicial').val(btn.attr('data-saldo_inicial'));
+      $('#modalBanco .modal-title').text('Editar Banco');
+    } else {
+      $('#formBanco')[0].reset();
+      $('#banco-id').val('');
+      $('#modalBanco .modal-title').text('Novo Banco');
+    }
   });
 
   $('#formBanco').submit(function(e){

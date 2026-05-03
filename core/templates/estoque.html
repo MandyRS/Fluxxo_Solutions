@@ -46,7 +46,7 @@
         </div>
       </div>
       <table class="table table-striped table-hover align-middle" id="tabelaEstoque">
-        <thead class="table-light">
+        <thead class="">
           <tr>
             <th>Código</th>
             <th>Nome</th>
@@ -111,7 +111,7 @@
         </div>
       </div>
       <table class="table table-striped table-hover align-middle" id="tabelaFluxoEstoque">
-        <thead class="table-light">
+        <thead class="">
           <tr>
             <th>Data</th>
             <th>Produto</th>
@@ -229,7 +229,7 @@
         </div>
         <!-- Tabela -->
         <table class="table table-striped table-hover align-middle" id="tabelaVerMovimentacoes">
-          <thead class="table-light">
+          <thead class="">
             <tr>
               <th>Data</th>
               <th>Tipo</th>
@@ -291,7 +291,7 @@
           </div>
           <div class="table-responsive mb-3">
             <table class="table table-bordered align-middle" id="editarWizardTabelaProdutos">
-              <thead class="table-light">
+              <thead class="">
                 <tr>
                   <th>Subcategoria</th>
                   <th>Produto</th>
@@ -341,7 +341,7 @@
           </div>
           <div class="table-responsive mb-3">
             <table class="table table-bordered align-middle" id="wizardTabelaProdutos">
-              <thead class="table-light">
+              <thead class="">
                 <tr>
                   <th>Subcategoria</th>
                   <th>Produto</th>
@@ -361,7 +361,7 @@
           </div>
           <div class="table-responsive">
             <table class="table table-bordered align-middle" id="wizardTabelaPerdas">
-              <thead class="table-light">
+              <thead class="">
                 <tr>
                   <th>Subcategoria</th>
                   <th>Produto</th>
@@ -592,7 +592,7 @@ $(document).on('click', '.btnSubcatMassa', function() {
     if (produtos.length === 0) {
       html += '<p class="text-muted small mb-2">Nenhum produto encontrado nesta subcategoria.</p>';
     } else {
-      html += '<table class="table table-bordered align-middle mb-2"><thead class="table-light"><tr>';
+      html += '<table class="table table-bordered align-middle mb-2"><thead class=""><tr>';
       html += '<th><input type="checkbox" class="checkTodosSubcatMassa" data-subcat-id="' + subcatId + '"></th>';
       html += '<th>Produto</th><th>Estoque Atual</th><th>Quantidade</th>';
       html += '</tr></thead><tbody>';

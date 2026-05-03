@@ -51,7 +51,7 @@ class BancoForm(forms.ModelForm):
 class LancamentoBancarioForm(forms.ModelForm):
     class Meta:
         model = LancamentoBancario
-        fields = ['data', 'descricao', 'valor', 'tipo', 'categoria', 'banco']
+        fields = ['data', 'descricao', 'valor', 'tipo', 'banco']
         widgets = {
             'data': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'valor': forms.NumberInput(attrs={'step': '0.01'}),

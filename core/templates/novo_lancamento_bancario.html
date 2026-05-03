@@ -23,7 +23,7 @@
                             <div>
                                 <span class="badge rounded-pill text-bg-light text-primary fw-semibold mb-3">Financeiro</span>
                                 <h3 class="fw-bold mb-3 fs-4">Lancamento com contexto claro</h3>
-                                <p class="mb-0 text-white-50 small">Preencha os dados principais para manter o saldo e a classificacao financeira organizados no dashboard bancario.</p>
+                                <p class="mb-0 text-white-50 small">Preencha os dados principais para manter o saldo organizado no fluxo bancário.</p>
                             </div>
                             <div class="pt-4">
                                 <div class="d-flex align-items-center gap-3 mb-3">
@@ -31,8 +31,8 @@
                                         <i class="bi bi-bank fs-5"></i>
                                     </div>
                                     <div>
-                                        <div class="fw-semibold small">Conciliacao rapida</div>
-                                        <div class="small text-white-50">Banco, tipo e classificacao em um unico fluxo.</div>
+                                        <div class="fw-semibold small">Registro rápido</div>
+                                        <div class="small text-white-50">Banco, tipo e valor em um único fluxo.</div>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-3">
@@ -40,15 +40,15 @@
                                         <i class="bi bi-graph-up-arrow fs-5"></i>
                                     </div>
                                     <div>
-                                        <div class="fw-semibold small">Visao gerencial</div>
-                                        <div class="small text-white-50">Os dados alimentam os totais por categoria no painel bancario.</div>
+                                        <div class="fw-semibold small">Saldo atualizado</div>
+                                        <div class="small text-white-50">Os lançamentos atualizam o saldo anterior e atual automaticamente.</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-lg-8 bg-white">
+                    <div class="col-lg-8" style="background:rgba(255,255,255,.04)">
                         <div class="p-4 p-lg-5">
                             {% if form.non_field_errors %}
                             <div class="alert alert-danger border-0 shadow-sm">
@@ -102,14 +102,6 @@
                                         <div class="text-danger small mt-1">{{ form.tipo.errors|striptags }}</div>
                                         {% endif %}
                                     </div>
-
-                                    <div class="col-md-4">
-                                        <label for="{{ form.classificacao.id_for_label }}" class="form-label fw-semibold small">Classificacao</label>
-                                        {{ form.classificacao }}
-                                        {% if form.classificacao.errors %}
-                                        <div class="text-danger small mt-1">{{ form.classificacao.errors|striptags }}</div>
-                                        {% endif %}
-                                    </div>
                                 </div>
 
                                 <div class="d-flex flex-wrap gap-2 justify-content-end mt-4 pt-3 border-top">
@@ -139,7 +131,6 @@
       '{{ form.valor.auto_id }}': fieldClasses,
       '{{ form.banco.auto_id }}': selectClasses,
       '{{ form.tipo.auto_id }}': selectClasses,
-      '{{ form.classificacao.auto_id }}': selectClasses,
     };
 
     Object.entries(fields).forEach(([id, className]) => {

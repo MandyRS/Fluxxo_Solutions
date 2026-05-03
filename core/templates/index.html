@@ -2,40 +2,538 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluxxo Solutions | Gestão Financeira SaaS</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ControleFlexx | Gestão Inteligente</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent: #6366f1;
+      --accent2: #06b6d4;
+      --dark: #0a0f1e;
+      --dark2: #111827;
+      --card-bg: rgba(255,255,255,.04);
+      --card-border: rgba(255,255,255,.08);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── BLOBS ── */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: .18;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .blob-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; right: -150px; }
+    .blob-2 { width: 500px; height: 500px; background: var(--accent2); bottom: -100px; left: -100px; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 7%;
+      background: rgba(10,15,30,.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .nav-logo {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px;
+      background: linear-gradient(135deg, #a5b4fc, #67e8f9);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .nav-logo span { font-weight: 300; }
+
+    .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+    .nav-links a { text-decoration: none; color: var(--muted); font-size: .9rem; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: #fff; }
+
+    .btn-nav {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff !important;
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-weight: 600 !important;
+      font-size: .85rem !important;
+      transition: opacity .2s, transform .2s !important;
+    }
+    .btn-nav:hover { opacity: .85; transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 120px 7% 80px;
+      gap: 60px;
+    }
+
+    .hero-left { flex: 1; max-width: 580px; }
+
+    .badge-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(99,102,241,.15);
+      border: 1px solid rgba(99,102,241,.3);
+      color: #a5b4fc;
+      padding: 6px 14px; border-radius: 100px;
+      font-size: .78rem; font-weight: 600;
+      margin-bottom: 28px;
+    }
+    .badge-pill i { font-size: .9rem; }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 22px;
+      color: #fff;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(135deg, #a5b4fc 0%, #67e8f9 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 1.05rem; color: var(--muted); line-height: 1.75;
+      margin-bottom: 40px; max-width: 500px;
+    }
+
+    .hero-btns { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    .btn-primary-lg {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; text-decoration: none;
+      padding: 14px 32px; border-radius: 10px;
+      font-size: .95rem; font-weight: 700;
+      box-shadow: 0 0 40px rgba(99,102,241,.35);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .btn-primary-lg:hover { transform: translateY(-2px); box-shadow: 0 0 60px rgba(99,102,241,.5); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text); text-decoration: none;
+      padding: 14px 28px; border-radius: 10px;
+      font-size: .95rem; font-weight: 600;
+      transition: background .2s, border-color .2s;
+    }
+    .btn-ghost:hover { background: var(--card-bg); border-color: rgba(255,255,255,.2); }
+
+    /* ── STATS ── */
+    .hero-stats {
+      display: flex; gap: 32px; margin-top: 48px; flex-wrap: wrap;
+    }
+    .stat { border-left: 2px solid rgba(99,102,241,.5); padding-left: 16px; }
+    .stat-num { font-size: 1.6rem; font-weight: 800; color: #fff; line-height: 1; }
+    .stat-label { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── HERO CARD ── */
+    .hero-right { flex: 1; display: flex; justify-content: center; align-items: center; }
+
+    .dashboard-preview {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%; max-width: 420px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 40px 80px rgba(0,0,0,.5);
+    }
+
+    .preview-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px;
+    }
+    .preview-title { font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .preview-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+
+    .preview-amount {
+      font-size: 2.2rem; font-weight: 800; color: #fff;
+      letter-spacing: -1px; margin-bottom: 4px;
+    }
+    .preview-change {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(34,197,94,.15); color: #4ade80;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: .75rem; font-weight: 600;
+    }
+
+    .preview-divider { height: 1px; background: var(--card-border); margin: 20px 0; }
+
+    .preview-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .preview-row:last-child { margin-bottom: 0; }
+    .preview-row-label { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--muted); }
+    .preview-row-label i { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: .78rem; }
+    .icon-green { background: rgba(34,197,94,.15); color: #4ade80; }
+    .icon-red   { background: rgba(239,68,68,.15);  color: #f87171; }
+    .icon-blue  { background: rgba(99,102,241,.15); color: #a5b4fc; }
+    .icon-cyan  { background: rgba(6,182,212,.15);  color: #67e8f9; }
+    .preview-row-val { font-size: .85rem; font-weight: 700; color: #fff; }
+
+    /* ── FEATURES ── */
+    .features {
+      position: relative; z-index: 1;
+      padding: 100px 7%;
+    }
+    .section-tag {
+      text-align: center; color: #a5b4fc;
+      font-size: .78rem; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; margin-bottom: 14px;
+    }
+    .section-title {
+      text-align: center; font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 800; color: #fff; letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      text-align: center; color: var(--muted);
+      font-size: 1rem; max-width: 520px; margin: 0 auto 60px; line-height: 1.7;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 28px;
+      transition: border-color .3s, transform .3s;
+    }
+    .feat-card:hover { border-color: rgba(99,102,241,.4); transform: translateY(-4px); }
+
+    .feat-icon {
+      width: 46px; height: 46px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; margin-bottom: 18px;
+    }
+
+    .feat-card h3 { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .feat-card p  { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative; z-index: 1;
+      text-align: center;
+      padding: 40px 7%;
+      border-top: 1px solid var(--card-border);
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    footer strong { color: #a5b4fc; }
+
+    /* ── SCROLL REVEAL ANIMATION ── */
+    .reveal { opacity: 0; transform: translateY(30px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="logo">{{ empresa.nome }}</div>
-        <ul class="nav-links">
-            <li><a href="#features">Funcionalidades</a></li>
-            <li><a href="#reports">Relatórios</a></li>
-            <li><a href="/login" class="btn-login">Acessar Sistema</a></li>
-        </ul>
-    </nav>
 
-    <header class="hero">
-        <div class="hero-content">
-            <h1>Controle financeiro de alto nível para sua empresa.</h1>
-            <p>Gerencie fluxo de caixa, emita relatórios inteligentes e tome decisões baseadas em dados com nossa plataforma SaaS.</p>
-            <div class="hero-btns">
-                <button class="btn-primary">Começar Agora</button>
-            
-            </div>
-        </div>
-        
-        <div class="hero-dashboard">
-            <div class="glass-card">
-                <p>Saldo em Conta</p>
-                <h3>R$ 45.230,00</h3>
-                <div class="mini-chart"></div>
-            </div>
-        </div>
-    </header>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
 
-    <script src="static/js/main.js"></script>
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">Controle<span>Flexx</span></div>
+    <ul class="nav-links">
+      <li><a href="#features">Funcionalidades</a></li>
+      <li><a href="#features">Sobre</a></li>
+      <li><a href="{% url 'core:login' %}" class="btn-nav">Acessar Sistema</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-left reveal">
+      <div class="badge-pill">
+        <i class="bi bi-stars"></i>
+        Plataforma de gestão completa
+      </div>
+      <h1>
+        Controle total<br>
+        do seu negócio<br>
+        com <span class="grad">ControleFlexx</span>
+      </h1>
+      <p>
+        Estoque, finanças, orçamentos e muito mais em um só lugar.
+        Tome decisões inteligentes com dados em tempo real.
+      </p>
+      <div class="hero-btns">
+        <a href="#cadastrar" class="btn-primary-lg">
+          <i class="bi bi-rocket-takeoff"></i> Começar agora
+        </a>
+        <a href="#features" class="btn-ghost">
+          <i class="bi bi-play-circle"></i> Ver funcionalidades
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num">100%</div>
+          <div class="stat-label">Web-based</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">Real-time</div>
+          <div class="stat-label">Dados ao vivo</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">Seguro</div>
+          <div class="stat-label">Acesso por empresa</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-right reveal" style="transition-delay:.2s">
+      <div class="dashboard-preview">
+        <div class="preview-header">
+          <span class="preview-title">Saldo Bancário</span>
+          <span class="preview-dot"></span>
+        </div>
+        <div class="preview-amount">R$ 101.000,00</div>
+        <div class="preview-change"><i class="bi bi-arrow-up"></i> +12,4% este mês</div>
+
+        <div class="preview-divider"></div>
+
+        <div class="preview-row">
+          <div class="preview-row-label">
+            <span class="feat-icon icon-green" style="width:26px;height:26px;border-radius:6px;font-size:.75rem"><i class="bi bi-arrow-down-left"></i></span>
+            Receitas do mês
+          </div>
+          <div class="preview-row-val" style="color:#4ade80">R$ 100.000</div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-row-label">
+            <span class="feat-icon icon-red" style="width:26px;height:26px;border-radius:6px;font-size:.75rem"><i class="bi bi-arrow-up-right"></i></span>
+            Despesas do mês
+          </div>
+          <div class="preview-row-val" style="color:#f87171">R$ 0,00</div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-row-label">
+            <span class="feat-icon icon-blue" style="width:26px;height:26px;border-radius:6px;font-size:.75rem"><i class="bi bi-file-earmark-text"></i></span>
+            Orçamentos
+          </div>
+          <div class="preview-row-val">1 aberto</div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-row-label">
+            <span class="feat-icon icon-cyan" style="width:26px;height:26px;border-radius:6px;font-size:.75rem"><i class="bi bi-boxes"></i></span>
+            Itens em estoque
+          </div>
+          <div class="preview-row-val">6 itens</div>
+        </div>
+
+        <div class="preview-divider"></div>
+
+        <div style="display:flex;gap:6px;align-items:flex-end;height:44px">
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:25%;opacity:.8"></div>
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:60%;opacity:.8"></div>
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:40%;opacity:.8"></div>
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:80%;opacity:.8"></div>
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:55%;opacity:.8"></div>
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:70%;opacity:.8"></div>
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:95%;opacity:.8"></div>
+          <div style="flex:1;background:linear-gradient(0deg,#6366f1,#67e8f9);border-radius:4px;height:45%;opacity:.8"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <p class="section-tag reveal">Funcionalidades</p>
+    <h2 class="section-title reveal">Tudo que sua empresa precisa</h2>
+    <p class="section-sub reveal">Do estoque às finanças, do orçamento à produção — tudo integrado e em tempo real.</p>
+
+    <div class="features-grid">
+      <div class="feat-card reveal">
+        <div class="feat-icon icon-green"><i class="bi bi-bank2"></i></div>
+        <h3>Fluxo Bancário</h3>
+        <p>Controle entradas e saídas por banco, acompanhe saldo anterior, saldo atual e movimentações do mês.</p>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.05s">
+        <div class="feat-icon icon-blue"><i class="bi bi-boxes"></i></div>
+        <h3>Gestão de Estoque</h3>
+        <p>Movimentações de entrada e saída, estoque mínimo, alertas críticos e relatório completo por produto.</p>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.1s">
+        <div class="feat-icon icon-cyan"><i class="bi bi-file-earmark-richtext"></i></div>
+        <h3>Orçamentos</h3>
+        <p>Crie orçamentos profissionais, defina previsão de entrega e acompanhe o valor total por período.</p>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.15s">
+        <div class="feat-icon" style="background:rgba(251,191,36,.12);color:#fbbf24"><i class="bi bi-graph-up-arrow"></i></div>
+        <h3>Dashboard em Tempo Real</h3>
+        <p>KPIs, gráficos mensais, produtos mais movimentados e alertas de estoque crítico na tela inicial.</p>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:.2s">
+        <div class="feat-icon" style="background:rgba(244,63,94,.12);color:#fb7185"><i class="bi bi-box-arrow-in-down"></i></div>
+        <h3>Entradas Comerciais</h3>
+        <p>Registre compras com fornecedores, produtos e valores. Acompanhe o total de compras do mês.</p>
+      </div>
+     
+    </div>
+  </section>
+
+  <!-- CADASTRO / CTA -->
+  <section id="cadastrar" style="padding:100px 7%;position:relative;z-index:1">
+    <div style="max-width:780px;margin:0 auto;text-align:center">
+      <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;
+                color:#6366f1;margin-bottom:12px" class="reveal">Cadastre sua empresa</p>
+      <h2 class="reveal" style="font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;
+                color:#f1f5f9;letter-spacing:-.04em;margin-bottom:16px;line-height:1.15">
+        Pronto para ter controle total<br>do seu negócio?
+      </h2>
+      <p class="reveal" style="color:#94a3b8;font-size:1rem;margin-bottom:40px;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.7">
+        Preencha o formulário abaixo e envie pelo WhatsApp. Nossa equipe entrará em contato para configurar sua empresa no sistema.
+      </p>
+
+      <!-- Card formulário -->
+      <div class="reveal" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
+           border-radius:20px;padding:2.5rem;max-width:560px;margin:0 auto;text-align:left">
+
+        <div style="margin-bottom:1.2rem">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;text-transform:uppercase;
+                        letter-spacing:.07em;margin-bottom:6px">Nome da empresa</label>
+          <input type="text" id="cad-empresa" placeholder="Ex: Minha Empresa Ltda"
+                 style="width:100%;padding:11px 14px;border-radius:10px;
+                        background:#0d1526;border:1px solid rgba(255,255,255,.12);
+                        color:#e2e8f0;font-size:.9rem;outline:none;font-family:inherit;
+                        transition:border-color .2s"
+                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+        </div>
+
+        <div style="margin-bottom:1.2rem">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;text-transform:uppercase;
+                        letter-spacing:.07em;margin-bottom:6px">Seu nome</label>
+          <input type="text" id="cad-nome" placeholder="Ex: João Silva"
+                 style="width:100%;padding:11px 14px;border-radius:10px;
+                        background:#0d1526;border:1px solid rgba(255,255,255,.12);
+                        color:#e2e8f0;font-size:.9rem;outline:none;font-family:inherit;
+                        transition:border-color .2s"
+                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+        </div>
+
+        <div style="margin-bottom:1.2rem">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;text-transform:uppercase;
+                        letter-spacing:.07em;margin-bottom:6px">Segmento / Ramo</label>
+          <input type="text" id="cad-segmento" placeholder="Ex: Marcenaria, Varejo, Serviços..."
+                 style="width:100%;padding:11px 14px;border-radius:10px;
+                        background:#0d1526;border:1px solid rgba(255,255,255,.12);
+                        color:#e2e8f0;font-size:.9rem;outline:none;font-family:inherit;
+                        transition:border-color .2s"
+                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+        </div>
+
+        <div style="margin-bottom:1.8rem">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;text-transform:uppercase;
+                        letter-spacing:.07em;margin-bottom:6px">Telefone / WhatsApp</label>
+          <input type="text" id="cad-telefone" placeholder="Ex: (83) 9 9999-9999"
+                 style="width:100%;padding:11px 14px;border-radius:10px;
+                        background:#0d1526;border:1px solid rgba(255,255,255,.12);
+                        color:#e2e8f0;font-size:.9rem;outline:none;font-family:inherit;
+                        transition:border-color .2s"
+                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+        </div>
+
+        <p id="cad-erro" style="color:#f87171;font-size:.82rem;margin-bottom:.8rem;display:none">
+          Por favor, preencha todos os campos.
+        </p>
+
+        <a id="cad-btn" href="#" onclick="enviarCadastro(event)" target="_blank" rel="noopener noreferrer"
+           style="display:flex;align-items:center;justify-content:center;gap:10px;
+                  width:100%;padding:13px;border-radius:12px;
+                  background:#25d366;color:#fff;font-weight:700;font-size:.95rem;
+                  text-decoration:none;transition:opacity .2s;letter-spacing:-.01em"
+           onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" style="fill:#fff">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+          </svg>
+          Solicitar orçamento pelo WhatsApp
+        </a>
+
+        <p style="text-align:center;margin-top:14px;font-size:.78rem;color:#475569">
+          Já tem acesso? <a href="{% url 'core:login' %}" style="color:#a5b4fc;text-decoration:none;font-weight:600">Entrar no sistema →</a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>© 2026 <strong>ControleFlexx</strong> — Todos os direitos reservados. Desenvolvido por Fluxxo Solutions.</p>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const els = document.querySelectorAll('.reveal');
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    els.forEach(el => obs.observe(el));
+
+    // Trigger hero reveals immediately
+    document.querySelectorAll('.hero .reveal').forEach((el, i) => {
+      setTimeout(() => el.classList.add('visible'), 100 + i * 150);
+    });
+
+    // Cadastro → WhatsApp
+    function enviarCadastro(e) {
+      e.preventDefault();
+      var empresa   = document.getElementById('cad-empresa').value.trim();
+      var nome      = document.getElementById('cad-nome').value.trim();
+      var segmento  = document.getElementById('cad-segmento').value.trim();
+      var telefone  = document.getElementById('cad-telefone').value.trim();
+      var erro      = document.getElementById('cad-erro');
+
+      if (!empresa || !nome || !segmento || !telefone) {
+        erro.style.display = 'block';
+        return;
+      }
+      erro.style.display = 'none';
+
+      var msg = 'Olá! Gostaria de cadastrar minha empresa no *ControleFlexx*.\n\n'
+              + '🏢 *Empresa:* ' + empresa + '\n'
+              + '👤 *Responsável:* ' + nome + '\n'
+              + '🏭 *Segmento:* ' + segmento + '\n'
+              + '📱 *Telefone:* ' + telefone + '\n\n'
+              + 'Poderia me informar sobre os planos disponíveis?';
+
+      window.open('https://wa.me/5583999921413?text=' + encodeURIComponent(msg), '_blank');
+    }
+  </script>
+
 </body>
 </html>
