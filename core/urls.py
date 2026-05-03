@@ -94,6 +94,10 @@ urlpatterns = [
     path('bancos/<int:id>/excluir/', views.excluir_banco_ajax, name='excluir_banco_ajax'),
     path('bancos/listar/', views.listar_bancos_ajax, name='listar_bancos_ajax'),
 
+    # Lançamentos Bancários
+    path('lancamentos/<int:id>/editar/', views.editar_lancamento_bancario, name='editar_lancamento_bancario'),
+    path('lancamentos/<int:id>/excluir/', views.excluir_lancamento_bancario, name='excluir_lancamento_bancario'),
+
     # ---------------- DETALHE ORÇAMENTO JSON ----------------
     
     path('orcamentos/<int:id>/json/', views.orcamento_detalhe_json, name='orcamento_detalhe_json'),

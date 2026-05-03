@@ -2,11 +2,163 @@
 {% load static %}
 
 {% block content %}
-<h2>Novo Lançamento Bancário</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Salvar</button>
-    <a href="{% url 'core:fluxo_bancario' %}" class="btn btn-secondary">Cancelar</a>
-</form>
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <p class="text-uppercase text-muted small mb-1">Fluxo Bancario</p>
+                    <h2 class="mb-1 fw-bold fs-4">{% if editando %}Editar Lançamento{% else %}Novo Lançamento Bancário{% endif %}</h2>
+                    <p class="text-muted mb-0 small">{% if editando %}Altere os dados do lançamento e salve.{% else %}Registre entradas e saidas com classificacao financeira e banco vinculado.{% endif %}</p>
+                </div>
+                <a href="{% url 'core:fluxo_bancario' %}{% if editando %}?banco={{ lancamento.banco.id }}{% elif request.GET.banco %}?banco={{ request.GET.banco }}{% endif %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Voltar ao fluxo
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 22px;">
+                <div class="row g-0">
+                    <div class="col-lg-4 text-white" style="background: linear-gradient(160deg, #0f172a 0%, #1d4ed8 55%, #38bdf8 100%);">
+                        <div class="p-4 p-lg-5 h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <span class="badge rounded-pill text-bg-light text-primary fw-semibold mb-3">Financeiro</span>
+                                <h3 class="fw-bold mb-3 fs-4">Lancamento com contexto claro</h3>
+                                <p class="mb-0 text-white-50 small">Preencha os dados principais para manter o saldo e a classificacao financeira organizados no dashboard bancario.</p>
+                            </div>
+                            <div class="pt-4">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background: rgba(255,255,255,0.14);">
+                                        <i class="bi bi-bank fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold small">Conciliacao rapida</div>
+                                        <div class="small text-white-50">Banco, tipo e classificacao em um unico fluxo.</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background: rgba(255,255,255,0.14);">
+                                        <i class="bi bi-graph-up-arrow fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold small">Visao gerencial</div>
+                                        <div class="small text-white-50">Os dados alimentam os totais por categoria no painel bancario.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8 bg-white">
+                        <div class="p-4 p-lg-5">
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger border-0 shadow-sm">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.data.id_for_label }}" class="form-label fw-semibold small">Data</label>
+                                        {{ form.data }}
+                                        {% if form.data.errors %}
+                                        <div class="text-danger small mt-1">{{ form.data.errors|striptags }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="{{ form.banco.id_for_label }}" class="form-label fw-semibold small">Banco</label>
+                                        {{ form.banco }}
+                                        {% if form.banco.errors %}
+                                        <div class="text-danger small mt-1">{{ form.banco.errors|striptags }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label for="{{ form.descricao.id_for_label }}" class="form-label fw-semibold small">Descricao</label>
+                                        {{ form.descricao }}
+                                        {% if form.descricao.errors %}
+                                        <div class="text-danger small mt-1">{{ form.descricao.errors|striptags }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="{{ form.valor.id_for_label }}" class="form-label fw-semibold small">Valor</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">R$</span>
+                                            {{ form.valor }}
+                                        </div>
+                                        {% if form.valor.errors %}
+                                        <div class="text-danger small mt-1">{{ form.valor.errors|striptags }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="{{ form.tipo.id_for_label }}" class="form-label fw-semibold small">Tipo</label>
+                                        {{ form.tipo }}
+                                        {% if form.tipo.errors %}
+                                        <div class="text-danger small mt-1">{{ form.tipo.errors|striptags }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="{{ form.classificacao.id_for_label }}" class="form-label fw-semibold small">Classificacao</label>
+                                        {{ form.classificacao }}
+                                        {% if form.classificacao.errors %}
+                                        <div class="text-danger small mt-1">{{ form.classificacao.errors|striptags }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2 justify-content-end mt-4 pt-3 border-top">
+                                    <a href="{% url 'core:fluxo_bancario' %}{% if editando %}?banco={{ lancamento.banco.id }}{% elif request.GET.banco %}?banco={{ request.GET.banco }}{% endif %}" class="btn btn-light border px-4">Cancelar</a>
+                                    <button type="submit" class="btn btn-success px-4">
+                                        <i class="bi bi-check2-circle me-2"></i>{% if editando %}Salvar alterações{% else %}Salvar lançamento{% endif %}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+        const fieldClasses = 'form-control';
+        const selectClasses = 'form-select';
+    const fields = {
+      '{{ form.data.auto_id }}': fieldClasses,
+      '{{ form.descricao.auto_id }}': fieldClasses,
+      '{{ form.valor.auto_id }}': fieldClasses,
+      '{{ form.banco.auto_id }}': selectClasses,
+      '{{ form.tipo.auto_id }}': selectClasses,
+      '{{ form.classificacao.auto_id }}': selectClasses,
+    };
+
+    Object.entries(fields).forEach(([id, className]) => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.className = className;
+      }
+    });
+
+    const descricao = document.getElementById('{{ form.descricao.auto_id }}');
+    if (descricao) {
+      descricao.placeholder = 'Ex.: pagamento fornecedor, aporte, retirada ou recebimento';
+    }
+
+    const valor = document.getElementById('{{ form.valor.auto_id }}');
+    if (valor) {
+      valor.placeholder = '0,00';
+      valor.min = '0';
+    }
+  });
+</script>
 {% endblock %}

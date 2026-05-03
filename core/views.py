@@ -176,25 +176,63 @@ def fluxo_bancario_dashboard(request):
     empresa = get_empresa_da_sessao(request)
     bancos = Banco.objects.filter(empresa=empresa)
     banco_id = request.GET.get('banco')
+    data_inicial = request.GET.get('data_inicial') or ''
+    data_final = request.GET.get('data_final') or ''
     banco_selecionado = None
     lancamentos = []
     saldo_anterior = 0
     saldo_atual = 0
+    totais_classificacao = {}
+    total_geral = 0
+
+    def calcular_variacao(registros):
+        return sum(
+            registro.valor if registro.tipo == 'entrada' else -registro.valor
+            for registro in registros
+        )
+
     if banco_id:
         banco_selecionado = get_object_or_404(Banco, id=banco_id, empresa=empresa)
-        lancamentos = banco_selecionado.lancamentos.order_by('data', 'id')
+        lancamentos_base = banco_selecionado.lancamentos.all()
         saldo_anterior = banco_selecionado.saldo_inicial
-        for l in lancamentos:
-            if l.tipo == 'entrada':
-                saldo_anterior += l.valor
-            else:
-                saldo_anterior -= l.valor
-        saldo_atual = saldo_anterior
+
+        if data_inicial:
+            saldo_anterior += calcular_variacao(lancamentos_base.filter(data__lt=data_inicial))
+
+        if data_inicial:
+            lancamentos_base = lancamentos_base.filter(data__gte=data_inicial)
+        if data_final:
+            lancamentos_base = lancamentos_base.filter(data__lte=data_final)
+
+        lancamentos = lancamentos_base.order_by('data', 'id')
+        saldo_atual = saldo_anterior + calcular_variacao(lancamentos)
+
+        classificacoes = [
+            ('despesa', 'Despesa'),
+            ('investimento', 'Investimento'),
+            ('adiantamento_socio', 'Adiantamento de Sócio'),
+            ('distribuicao_lucro', 'Distribuição de Lucro'),
+            ('outros', 'Outros'),
+        ]
+        for chave, label in classificacoes:
+            total = sum(
+                l.valor if l.tipo == 'entrada' else -l.valor
+                for l in lancamentos
+                if l.classificacao == chave
+            )
+            totais_classificacao[chave] = {'label': label, 'total': total}
+        total_geral = sum(v['total'] for v in totais_classificacao.values())
+
     return render(request, 'fluxo_bancario.html', {
         'bancos': bancos,
         'banco_selecionado': banco_selecionado,
         'lancamentos': lancamentos,
+        'data_inicial': data_inicial,
+        'data_final': data_final,
+        'saldo_anterior': saldo_anterior,
         'saldo_atual': saldo_atual,
+        'totais_classificacao': totais_classificacao,
+        'total_geral': total_geral,
     })
 
 
@@ -214,6 +252,34 @@ def novo_lancamento_bancario(request):
     else:
         form = LancamentoBancarioForm()
     return render(request, 'novo_lancamento_bancario.html', {'form': form})
+
+
+@login_required
+def editar_lancamento_bancario(request, id):
+    empresa = get_empresa_da_sessao(request)
+    lancamento = get_object_or_404(LancamentoBancario, id=id, banco__empresa=empresa)
+    if request.method == 'POST':
+        form = LancamentoBancarioForm(request.POST, instance=lancamento)
+        if form.is_valid():
+            form.save()
+            return redirect(f"/fluxo-bancario/?banco={lancamento.banco.id}")
+    else:
+        form = LancamentoBancarioForm(instance=lancamento)
+    return render(request, 'novo_lancamento_bancario.html', {
+        'form': form,
+        'editando': True,
+        'lancamento': lancamento,
+    })
+
+
+@login_required
+@require_POST
+def excluir_lancamento_bancario(request, id):
+    empresa = get_empresa_da_sessao(request)
+    lancamento = get_object_or_404(LancamentoBancario, id=id, banco__empresa=empresa)
+    banco_id = lancamento.banco.id
+    lancamento.delete()
+    return redirect(f"/fluxo-bancario/?banco={banco_id}")
 
 
 @login_required
