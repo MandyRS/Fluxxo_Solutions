@@ -7,10 +7,21 @@ from django.contrib.auth.models import User
 # ------------------------
 
 class ProdutoMateriaPrima(models.Model):
+    UNIDADE_CHOICES = [
+        ('ml', 'ml'),
+        ('l', 'L'),
+        ('g', 'g'),
+        ('kg', 'kg'),
+        ('pct', 'pct'),
+        ('un', 'un'),
+        ('cx', 'cx'),
+        ('outro', 'Outro'),
+    ]
     empresa = models.ForeignKey('Empresa', on_delete=models.CASCADE)
     produto_final = models.ForeignKey('Produto', on_delete=models.CASCADE, related_name='materias_primas')
     materia_prima = models.ForeignKey('Produto', on_delete=models.CASCADE, related_name='usado_em')
     quantidade = models.DecimalField(max_digits=10, decimal_places=3)
+    unidade = models.CharField(max_length=20, choices=UNIDADE_CHOICES, default='un')
 
     class Meta:
         unique_together = ('empresa', 'produto_final', 'materia_prima')

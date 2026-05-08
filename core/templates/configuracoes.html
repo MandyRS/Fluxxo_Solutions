@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="container mt-4">
-  <h2 class="mb-4">Configurações</h2>
+  <h2 class="mb-4 text-white">Configurações</h2>
 
   <!-- Nav tabs -->
   <ul class="nav nav-tabs" id="configTabs" role="tablist">
@@ -15,6 +15,9 @@
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab">Produtos</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="materia-prima-tab" data-bs-toggle="tab" data-bs-target="#materia-prima" type="button" role="tab">Matéria Prima</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="servicos-tab" data-bs-toggle="tab" data-bs-target="#servicos" type="button" role="tab">Serviços</button>
@@ -58,67 +61,83 @@
     <!-- Aba Produtos -->
     <div class="tab-pane fade" id="produtos" role="tabpanel">
       {% if categorias_list %}
-        <ul class="nav nav-pills mb-3 mt-2" id="produtoCategoriaTabs" role="tablist">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h4 class="mb-4 text-white">Produtos por Categoria</h4>
+          <span class="text-muted small">Escolha uma categoria para ver os produtos por subcategoria.</span>
+        </div>
+        <div class="row g-3">
           {% for cat in categorias_list %}
-            <li class="nav-item dropdown">
-              <button class="nav-link dropdown-toggle {% if forloop.first %}active{% endif %}" data-bs-toggle="dropdown" type="button" id="catTab{{ cat.id }}">{{ cat.nome }}</button>
-              <ul class="dropdown-menu">
-                {% for sub in cat.subcategorias.all %}
-                  <li><a class="dropdown-item produto-subcat-tab {% if forloop.first and forloop.parentloop.first %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#subcat-{{ sub.id }}" href="#">{{ sub.nome }}</a></li>
-                {% empty %}
-                  <li><span class="dropdown-item text-muted">Sem subcategorias</span></li>
-                {% endfor %}
-              </ul>
-            </li>
-          {% endfor %}
-        </ul>
-        <div class="tab-content" id="produtoCategoriaTabsContent">
-          {% for cat in categorias_list %}
-            {% for sub in cat.subcategorias.all %}
-              <div class="tab-pane fade {% if forloop.first and forloop.parentloop.first %}show active{% endif %}" id="subcat-{{ sub.id }}" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h5 class="mb-0">{{ cat.nome }} &gt; {{ sub.nome }}</h5>
-                  <button class="btn btn-primary btn-novo-produto" data-categoria="{{ cat.id }}" data-subcategoria="{{ sub.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">+ Novo Produto</button>
+          {% if cat.nome|lower != 'matéria prima' and cat.nome|lower != 'materia prima' %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0">
+              <div class="card-body pb-2">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h5 class="card-title mb-0 text-white">{{ cat.nome }}</h5>
+                  <button
+                    class="btn btn-sm btn-outline-primary btnAbrirProdutosCategoria"
+                    data-categoria-id="{{ cat.id }}"
+                    data-categoria-nome="{{ cat.nome }}"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalProdutosCategoria"
+                  >
+                    Ver produtos
+                  </button>
                 </div>
-                <table class="table table-striped">
-                  <thead>
-                    <tr>
-                      <th>Código</th>
-                      <th>Nome</th>
-                      <th>Descrição</th>
-                      <th>Peso</th>
-                      <th>Unidade</th>
-                      <th>Preço Unitário</th>
-                      <th>Estoque Inicial</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for p in sub.produtos.all %}
-                    <tr>
-                      <td>{{ p.codigo }}</td>
-                      <td>{{ p.nome }}</td>
-                      <td>{{ p.descricao }}</td>
-                      <td>{{ p.peso|floatformat:2 }}</td>
-                      <td>{{ p.unidade }}</td>
-                      <td>R$ {{ p.preco_unitario|floatformat:2 }}</td>
-                      <td>{{ p.estoque_atual|default_if_none:"0,00"|floatformat:2 }}</td>
-                      <td>
-                        <button class="btn btn-sm btn-info btn-editar-produto" data-id="{{ p.id }}" data-bs-toggle="modal" data-bs-target="#modalProduto">Editar</button>
-                        <button class="btn btn-sm btn-danger btn-excluir-produto" data-id="{{ p.id }}">Excluir</button>
-                      </td>
-                    </tr>
+                <p class="card-text small text-white mb-2">{{ cat.descricao|default:'Sem descrição.' }}</p>
+                <div class="mb-2">
+                  <div class="fw-semibold small mb-1">Subcategorias:</div>
+                  <div class="d-flex flex-wrap gap-1">
+                    {% for sub in cat.subcategorias.all %}
+                      <span class="badge bg-secondary px-2 py-1">{{ sub.nome }}</span>
                     {% empty %}
-                    <tr><td colspan="8" class="text-center text-muted">Nenhum produto nesta subcategoria.</td></tr>
+                      <span class="text-muted small">Nenhuma subcategoria.</span>
                     {% endfor %}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               </div>
-            {% endfor %}
+            </div>
+          </div>
+          {% endif %}
           {% endfor %}
         </div>
       {% else %}
         <div class="alert alert-info mt-4">Cadastre uma categoria e subcategoria na aba <b>Categorias</b> para começar a cadastrar produtos.</div>
+      {% endif %}
+    </div>
+
+    <!-- Aba Matéria Prima -->
+    <div class="tab-pane fade" id="materia-prima" role="tabpanel">
+      {% if categorias_list|get_materia_prima_subcats|length > 0 %}
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h4 class="mb-4 text-white">Matéria Prima por Subcategoria</h4>
+          <span class="text-muted small">Escolha uma subcategoria para ver e gerenciar os produtos.</span>
+        </div>
+        <div class="row g-3">
+          {% for sub in categorias_list|get_materia_prima_subcats %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0">
+              <div class="card-body pb-2">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h5 class="card-title mb-0 text-white">{{ sub.nome }}</h5>
+                  <button
+                    class="btn btn-sm btn-outline-primary btnAbrirProdutosSubcategoriaMP"
+                    data-subcategoria-id="{{ sub.id }}"
+                    data-subcategoria-nome="{{ sub.nome }}"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalProdutosCategoria"
+                  >
+                    Ver produtos
+                  </button>
+                </div>
+                <p class="card-text small text-white mb-2">{{ sub.descricao|default:'Sem descrição.' }}</p>
+                <div class="small text-muted">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-info mt-4"><b>Passo a passo:</b> 1. Crie a categoria <b>Matéria Prima</b> na aba Categorias. 2. Adicione as subcategorias dessa categoria. 3. Volte para esta aba e cadastre os produtos em cada subcategoria.<br><small><b>Observação:</b> para aparecer nesta aba, o nome da categoria deve ser exatamente <b>Matéria Prima</b> (com acento).</small></div>
       {% endif %}
     </div>
 
@@ -216,7 +235,7 @@
     <!-- Aba Categorias -->
     <div class="tab-pane fade" id="categorias" role="tabpanel">
       <div class="d-flex align-items-center justify-content-between mb-2">
-        <h4 class="mb-4">Categorias de Produto</h4>
+        <h4 class="mb-4 text-white">Categorias de Produto</h4>
         <button class="btn btn-primary shadow-sm px-4 py-2 fw-semibold" id="btnNovaCategoria" data-bs-toggle="modal" data-bs-target="#modalCategoria">+ Nova Categoria</button>
       </div>
       <div class="row g-3">
@@ -225,13 +244,13 @@
           <div class="card h-100 shadow-sm border-0">
             <div class="card-body pb-2">
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="card-title mb-0">{{ cat.nome }}</h5>
+                <h5 class="card-title mb-0 text-white">{{ cat.nome }}</h5>
                 <div>
                   <button class="btn btn-sm btn-outline-info btnEditarCategoria me-1" title="Editar" data-id="{{ cat.id }}" data-bs-toggle="modal" data-bs-target="#modalCategoria"><i class="bi bi-pencil"></i></button>
                   <button class="btn btn-sm btn-outline-danger btnExcluirCategoria" title="Excluir" data-id="{{ cat.id }}"><i class="bi bi-trash"></i></button>
                 </div>
               </div>
-              <p class="card-text small text-muted mb-2">{{ cat.descricao|default:'Sem descrição.' }}</p>
+              <p class="card-text small text-white mb-2">{{ cat.descricao|default:'Sem descrição.' }}</p>
               <div class="mb-2">
                 <div class="fw-semibold small mb-1">Subcategorias:</div>
                 <div class="d-flex flex-wrap gap-1">
@@ -335,10 +354,20 @@
                 <div class="fw-semibold">{{ sub.nome }}</div>
                 <div class="row">
                   {% for mp in sub.produtos.all %}
-                  <div class="col-md-6 mb-2 d-flex align-items-center">
-                    <input type="checkbox" class="form-check-input me-2 mp-checkbox" name="mp_produto_id_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" value="{{ mp.id }}">
-                    <span class="me-2">{{ mp.nome }}</span>
-                    <input type="number" name="mp_quantidade_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" class="form-control form-control-sm ms-2" min="0" step="0.001" style="width:100px" placeholder="Qtd">
+                  <div class="col-md-6 mb-2 d-flex align-items-center gap-1">
+                    <input type="checkbox" class="form-check-input me-1 mp-checkbox" name="mp_produto_id_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" value="{{ mp.id }}">
+                    <span class="me-1">{{ mp.nome }}</span>
+                    <input type="number" name="mp_quantidade_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" class="form-control form-control-sm" min="0" step="0.001" style="width:80px" placeholder="Qtd">
+                    <select name="mp_unidade_{{ forloop.parentloop.counter0 }}_{{ forloop.counter0 }}" class="form-select form-select-sm" style="width:70px">
+                      <option value="ml">ml</option>
+                      <option value="l">L</option>
+                      <option value="g">g</option>
+                      <option value="kg">kg</option>
+                      <option value="un">un</option>
+                      <option value="pct">pct</option>
+                      <option value="cx">cx</option>
+                      <option value="outro">outro</option>
+                    </select>
                   </div>
                   {% empty %}
                   <div class="col-12 text-muted small">Nenhum produto nesta subcategoria.</div>
@@ -356,6 +385,54 @@
           <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Produtos por Categoria -->
+<div class="modal fade" id="modalProdutosCategoria" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Produtos da categoria</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-md-6">
+            <label class="form-label mb-1">Subcategoria</label>
+            <select id="filtroSubcategoriaProdutos" class="form-select">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <button type="button" class="btn btn-primary" id="btnNovoProdutoModalCategoria" disabled>+ Novo Produto</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Peso</th>
+                <th>Unidade</th>
+                <th>Preço Unitário</th>
+                <th>Estoque Inicial</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyProdutosCategoriaModal">
+              <tr><td colspan="8" class="text-center text-muted">Selecione uma subcategoria para listar os produtos.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -505,6 +582,27 @@ var categoriasList = [
   {% for cat in categorias_list %}{id: {{ cat.id }}, nome: "{{ cat.nome|escapejs }}", subcategorias: [{% for sub in cat.subcategorias.all %}{id: {{ sub.id }}, nome: "{{ sub.nome|escapejs }}"},{% endfor %}]},{% endfor %}
 ];
 
+var produtosPorSubcategoria = {
+  {% for cat in categorias_list %}
+    {% for sub in cat.subcategorias.all %}
+    "{{ sub.id }}": [
+      {% for p in sub.produtos.all %}
+      {
+        id: {{ p.id }},
+        codigo: "{{ p.codigo|default_if_none:''|escapejs }}",
+        nome: "{{ p.nome|default_if_none:''|escapejs }}",
+        descricao: "{{ p.descricao|default_if_none:''|escapejs }}",
+        peso: "{{ p.peso|default_if_none:''|floatformat:2 }}",
+        unidade: "{{ p.unidade|default_if_none:''|escapejs }}",
+        preco_unitario: "{{ p.preco_unitario|default_if_none:''|floatformat:2 }}",
+        estoque_inicial: "{{ p.estoque_atual|default_if_none:'0'|floatformat:2 }}"
+      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]{% if not forloop.last or not forloop.parentloop.last %},{% endif %}
+    {% endfor %}
+  {% endfor %}
+};
+
 $(document).ready(function(){
 
     // Serializa ficha técnica de matéria-prima (checkboxes) no formato esperado pelo backend
@@ -515,13 +613,18 @@ $(document).ready(function(){
       var idx = 0;
       $('#secaoFichaTecnica .mp-checkbox:checked').each(function() {
         var mpId = $(this).val();
-        var qtd = $(this).closest('.d-flex').find('input[type=number]').val();
+        var $row = $(this).closest('.d-flex');
+        var qtd = $row.find('input[type=number]').val();
+        var unidade = $row.find('select').val() || 'un';
         $('<input>').attr({type:'hidden', name:'mp_produto_id_' + idx, value:mpId, class:'mp-hidden'}).appendTo('#formProduto');
         $('<input>').attr({type:'hidden', name:'mp_quantidade_' + idx, value:qtd, class:'mp-hidden'}).appendTo('#formProduto');
+        $('<input>').attr({type:'hidden', name:'mp_unidade_' + idx, value:unidade, class:'mp-hidden'}).appendTo('#formProduto');
         idx++;
       });
     });
   const csrftoken = $('[name=csrfmiddlewaretoken]').first().val();
+  let categoriaProdutosAtual = null;
+  let subcategoriaProdutosAtual = null;
 
   // Envia CSRF token automaticamente em todo POST AJAX
   $.ajaxSetup({
@@ -537,9 +640,38 @@ $(document).ready(function(){
     if (!catMP) return false;
     return catMP.subcategorias && catMP.subcategorias.length > 0;
   }
+  function obterCategoriaMateriaPrima() {
+    return categoriasList.find(function(c) {
+      var n = (c.nome || '').trim().toLowerCase();
+      return n === 'matéria prima' || n === 'materia prima';
+    });
+  }
+  function subcategoriaEhMateriaPrima(subcategoriaId) {
+    if (!subcategoriaId) return false;
+    var catMP = obterCategoriaMateriaPrima();
+    if (!catMP || !catMP.subcategorias) return false;
+    return catMP.subcategorias.some(function(s) { return String(s.id) === String(subcategoriaId); });
+  }
+  function atualizarVisibilidadeFichaTecnica(subcategoriaId) {
+    $('#toggleFichaTecnica').prop('checked', false);
+    $('#secaoFichaTecnica').hide();
+    esconderAvisoFichaTecnica();
+
+    if (subcategoriaEhMateriaPrima(subcategoriaId)) {
+      $('#toggleFichaTecnica').closest('.form-check').hide();
+      return;
+    }
+
+    if (podeUsarFichaTecnica()) {
+      $('#toggleFichaTecnica').closest('.form-check').show();
+    } else {
+      $('#toggleFichaTecnica').closest('.form-check').hide();
+      mostrarAvisoFichaTecnica();
+    }
+  }
   function mostrarAvisoFichaTecnica() {
     if ($('#avisoFichaTecnica').length === 0) {
-      $('#toggleFichaTecnica').closest('.form-check').after('<div id="avisoFichaTecnica" class="alert alert-warning small mt-2">Cadastre a categoria <b>Matéria Prima</b> e pelo menos uma subcategoria para poder definir ficha técnica.</div>');
+      $('#toggleFichaTecnica').closest('.form-check').after('<div id="avisoFichaTecnica" class="alert alert-warning small mt-2">Cadastre a categoria <b>Matéria Prima</b> e pelo menos uma subcategoria para poder definir ficha técnica.<br><b>Observação:</b> o nome deve ser exatamente <b>Matéria Prima</b> (com acento).</div>');
     }
   }
   function esconderAvisoFichaTecnica() {
@@ -672,24 +804,107 @@ $(document).ready(function(){
   });
 
   // ---- PRODUTOS ----
-  // Botão "Novo" em cada sub-tab
+  function preencherSubcategoriasModalProdutos(categoriaId) {
+    var cat = categoriasList.find(function(c) { return String(c.id) === String(categoriaId); });
+    var $select = $('#filtroSubcategoriaProdutos');
+    $select.empty();
+    $select.append('<option value="">Selecione...</option>');
+    if (!cat || !cat.subcategorias || !cat.subcategorias.length) {
+      return;
+    }
+    cat.subcategorias.forEach(function(sub) {
+      $select.append('<option value="' + sub.id + '">' + sub.nome + '</option>');
+    });
+  }
+
+  function renderTabelaProdutosModal(subcategoriaId) {
+    var produtos = produtosPorSubcategoria[String(subcategoriaId)] || [];
+    var $tbody = $('#tbodyProdutosCategoriaModal');
+    $tbody.empty();
+
+    if (!subcategoriaId) {
+      $tbody.html('<tr><td colspan="8" class="text-center text-muted">Selecione uma subcategoria para listar os produtos.</td></tr>');
+      return;
+    }
+
+    if (!produtos.length) {
+      $tbody.html('<tr><td colspan="8" class="text-center text-muted">Nenhum produto nesta subcategoria.</td></tr>');
+      return;
+    }
+
+    produtos.forEach(function(p) {
+      var row = '<tr>' +
+        '<td>' + (p.codigo || '-') + '</td>' +
+        '<td>' + (p.nome || '-') + '</td>' +
+        '<td>' + (p.descricao || '-') + '</td>' +
+        '<td>' + (p.peso || '0,00') + '</td>' +
+        '<td>' + (p.unidade || '-') + '</td>' +
+        '<td>R$ ' + (p.preco_unitario || '0,00') + '</td>' +
+        '<td>' + (p.estoque_inicial || '0,00') + '</td>' +
+        '<td>' +
+          '<button class="btn btn-sm btn-info btn-editar-produto me-1" data-id="' + p.id + '">Editar</button>' +
+          '<button class="btn btn-sm btn-danger btn-excluir-produto" data-id="' + p.id + '">Excluir</button>' +
+        '</td>' +
+      '</tr>';
+      $tbody.append(row);
+    });
+  }
+
+  $(document).on('click', '#modalProdutosCategoria .btn-editar-produto', function() {
+    $('#modalProdutosCategoria').modal('hide');
+  });
+
+  $(document).on('click', '.btnAbrirProdutosCategoria', function() {
+    categoriaProdutosAtual = $(this).data('categoria-id');
+    subcategoriaProdutosAtual = null;
+    var categoriaNome = $(this).data('categoria-nome') || 'Produtos da categoria';
+    $('#modalProdutosCategoria .modal-title').text('Produtos de ' + categoriaNome);
+    preencherSubcategoriasModalProdutos(categoriaProdutosAtual);
+    $('#filtroSubcategoriaProdutos').val('');
+    renderTabelaProdutosModal('');
+    $('#btnNovoProdutoModalCategoria').prop('disabled', true);
+  });
+
+  $(document).on('click', '.btnAbrirProdutosSubcategoriaMP', function() {
+    var subId = $(this).data('subcategoria-id');
+    var subNome = $(this).data('subcategoria-nome');
+    var categoriaMP = obterCategoriaMateriaPrima();
+    if (!categoriaMP) return;
+
+    categoriaProdutosAtual = categoriaMP.id;
+    subcategoriaProdutosAtual = subId;
+    $('#modalProdutosCategoria .modal-title').text('Matéria Prima - ' + subNome);
+    preencherSubcategoriasModalProdutos(categoriaProdutosAtual);
+    $('#filtroSubcategoriaProdutos').val(String(subId));
+    renderTabelaProdutosModal(subcategoriaProdutosAtual);
+    $('#btnNovoProdutoModalCategoria').prop('disabled', false);
+  });
+
+  $('#filtroSubcategoriaProdutos').on('change', function() {
+    subcategoriaProdutosAtual = $(this).val() || null;
+    renderTabelaProdutosModal(subcategoriaProdutosAtual);
+    $('#btnNovoProdutoModalCategoria').prop('disabled', !subcategoriaProdutosAtual);
+  });
+
+  $('#btnNovoProdutoModalCategoria').on('click', function() {
+    if (!subcategoriaProdutosAtual) return;
+    $('#modalProdutosCategoria').modal('hide');
+    $('#formProduto')[0].reset();
+    $('#produto-id').val('');
+    $('#produto-subcategoria').val(subcategoriaProdutosAtual);
+    $('#modalProduto .modal-title').text('Novo Produto');
+    atualizarVisibilidadeFichaTecnica(subcategoriaProdutosAtual);
+    $('#modalProduto').modal('show');
+  });
+
   $(document).on('click', '.btn-novo-produto', function(){
     $('#formProduto')[0].reset();
     $('#produto-id').val('');
     $('#tabelaMPFichaBody').empty();
-    $('#toggleFichaTecnica').prop('checked', false);
-    $('#secaoFichaTecnica').hide();
-    esconderAvisoFichaTecnica();
     var subcategoria = $(this).data('subcategoria');
     $('#produto-subcategoria').val(subcategoria);
     $('#modalProduto .modal-title').text('Novo Produto');
-    if (podeUsarFichaTecnica()) {
-      $('#toggleFichaTecnica').closest('.form-check').show();
-    } else {
-      $('#toggleFichaTecnica').closest('.form-check').hide();
-      $('#secaoFichaTecnica').hide();
-      mostrarAvisoFichaTecnica();
-    }
+    atualizarVisibilidadeFichaTecnica(subcategoria);
   });
 
   // Ao editar produto, mesma lógica
@@ -709,28 +924,24 @@ $(document).ready(function(){
       $('#produto-estoque-inicial').val(data.estoque_inicial);
       $('#produto-subcategoria').val(data.subcategoria || '');
       $('#modalProduto .modal-title').text('Editar Produto');
-      esconderAvisoFichaTecnica();
-      if (podeUsarFichaTecnica()) {
-        $('#toggleFichaTecnica').closest('.form-check').show();
-      } else {
-        $('#toggleFichaTecnica').closest('.form-check').hide();
-        $('#secaoFichaTecnica').hide();
-        mostrarAvisoFichaTecnica();
-      }
+      atualizarVisibilidadeFichaTecnica(data.subcategoria || '');
       var mps = data.materias_primas || [];
-      if (mps.length > 0) {
+      if (mps.length > 0 && !subcategoriaEhMateriaPrima(data.subcategoria || '')) {
         $('#toggleFichaTecnica').prop('checked', true);
         $('#secaoFichaTecnica').show();
         // Marca os checkboxes e preenche as quantidades
         mps.forEach(function(mp) {
           var $chk = $('#secaoFichaTecnica .mp-checkbox[value="'+mp.id+'"]');
           $chk.prop('checked', true);
-          $chk.closest('.d-flex').find('input[type=number]').val(mp.quantidade);
+          var $row = $chk.closest('.d-flex');
+          $row.find('input[type=number]').val(mp.quantidade);
+          if (mp.unidade) { $row.find('select').val(mp.unidade); }
         });
       } else {
         $('#toggleFichaTecnica').prop('checked', false);
         $('#secaoFichaTecnica').hide();
       }
+      $('#modalProduto').modal('show');
     });
   });
 
@@ -962,6 +1173,10 @@ $(document).ready(function(){
       else alert(data.mensagem || 'Erro ao excluir.');
     });
   });
+
+  if ($('#produtos .row.g-3 .card').length === 0) {
+    $('#produtos .row.g-3').append('<div class="col-12"><div class="alert alert-light text-center border">Nenhuma categoria de produto disponível fora de Matéria Prima.</div></div>');
+  }
 
 });
 </script>

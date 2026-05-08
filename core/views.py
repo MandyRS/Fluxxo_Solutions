@@ -534,6 +534,12 @@ def criar_produto_ajax(request):
         except (TypeError, ValueError):
             return 0
 
+    def eh_categoria_materia_prima(subcategoria_obj):
+        if not subcategoria_obj or not getattr(subcategoria_obj, 'categoria', None):
+            return False
+        nome = (subcategoria_obj.categoria.nome or '').strip().lower()
+        return nome in ('matéria prima', 'materia prima')
+
 
     preco = parse_decimal_br(request.POST.get('preco'))
     preco_unitario = parse_decimal_br(request.POST.get('preco_unitario'))
@@ -547,6 +553,11 @@ def criar_produto_ajax(request):
             subcategoria = SubcategoriaProduto.objects.get(id=subcat_id, empresa=empresa)
         except SubcategoriaProduto.DoesNotExist:
             subcategoria = None
+
+    estoque_inicial_item = estoque_inicial
+    if eh_categoria_materia_prima(subcategoria):
+        estoque_inicial_item = estoque_inicial * peso
+
     produto = Produto.objects.create(
         empresa=empresa,
         codigo=request.POST.get('codigo'),
@@ -566,15 +577,15 @@ def criar_produto_ajax(request):
         produto=produto,
         nome=produto.nome,
         codigo=produto.codigo,
-        quantidade=estoque_inicial,
+        quantidade=estoque_inicial_item,
         unidade=produto.unidade,
     )
     # Se estoque inicial > 0, registra movimentação de entrada
-    if estoque_inicial > 0:
+    if estoque_inicial_item > 0:
         MovimentacaoEstoque.objects.create(
             item=item_estoque,
             tipo='entrada',
-            quantidade=estoque_inicial,
+            quantidade=estoque_inicial_item,
             data=dt_date.today(),
             observacao='Estoque inicial',
             criado_por=request.user,
@@ -587,6 +598,7 @@ def criar_produto_ajax(request):
         idx = key.replace('mp_produto_id_', '')
         mp_id = request.POST.get(key, '').strip()
         mp_qtd = request.POST.get(f'mp_quantidade_{idx}', '0').strip()
+        mp_unidade = request.POST.get(f'mp_unidade_{idx}', 'un').strip()
         if not mp_id:
             continue
         try:
@@ -603,7 +615,7 @@ def criar_produto_ajax(request):
             empresa=empresa,
             produto_final=produto,
             materia_prima=mp_produto,
-            defaults={'quantidade': mp_qtd},
+            defaults={'quantidade': mp_qtd, 'unidade': mp_unidade},
         )
 
     return JsonResponse({
@@ -641,6 +653,13 @@ def editar_produto(request, id):
     empresa = get_empresa_da_sessao(request)
     try:
         produto = Produto.objects.get(id=id, empresa=empresa)
+
+        def eh_categoria_materia_prima(subcategoria_obj):
+            if not subcategoria_obj or not getattr(subcategoria_obj, 'categoria', None):
+                return False
+            nome = (subcategoria_obj.categoria.nome or '').strip().lower()
+            return nome in ('matéria prima', 'materia prima')
+
         if request.method == 'POST':
             def parse_decimal_br(value):
                 if value is None:
@@ -673,6 +692,7 @@ def editar_produto(request, id):
                 idx = key.replace('mp_produto_id_', '')
                 mp_id = request.POST.get(key, '').strip()
                 mp_qtd = request.POST.get(f'mp_quantidade_{idx}', '0').strip()
+                mp_unidade = request.POST.get(f'mp_unidade_{idx}', 'un').strip()
                 if not mp_id:
                     continue
                 try:
@@ -689,13 +709,15 @@ def editar_produto(request, id):
                     empresa=empresa,
                     produto_final=produto,
                     materia_prima=mp_produto,
-                    defaults={'quantidade': mp_qtd},
+                    defaults={'quantidade': mp_qtd, 'unidade': mp_unidade},
                 )
 
             return JsonResponse({'status': 'ok', 'id': produto.id})
         # Buscar estoque inicial (quantidade do ItemEstoque vinculado)
         item_estoque = ItemEstoque.objects.filter(produto=produto, empresa=empresa).first()
         estoque_inicial = item_estoque.quantidade if item_estoque else 0
+        if item_estoque and eh_categoria_materia_prima(produto.subcategoria) and float(produto.peso or 0) > 0:
+            estoque_inicial = float(item_estoque.quantidade) / float(produto.peso)
         def format_real(valor):
             return ("%.2f" % float(valor)).replace('.', ',')
         # Buscar ficha técnica de matéria-prima
@@ -705,6 +727,7 @@ def editar_produto(request, id):
                 'id': mp.materia_prima.id,
                 'nome': mp.materia_prima.nome,
                 'quantidade': float(mp.quantidade),
+                'unidade': mp.unidade,
             })
         data = {
             'id': produto.id,
@@ -860,6 +883,20 @@ def criar_orcamento(request):
                     observacao=f'Venda - Orca #{orcamento.numero}',
                     criado_por=request.user,
                 )
+                # Baixa automática nas matérias-primas (ficha técnica)
+        ficha = ProdutoMateriaPrima.objects.filter(produto_final=ref, empresa=empresa)
+        for mp in ficha:
+                       item_mp = ItemEstoque.objects.filter(produto=mp.materia_prima, empresa=empresa).first()
+                       if item_mp:
+                           consumo = float(mp.quantidade) * qtd
+                           item_mp.quantidade = float(item_mp.quantidade) - consumo
+                           item_mp.save()
+                           MovimentacaoEstoque.objects.create(
+                               item=item_mp, tipo='saida', quantidade=consumo,
+                               data=dt_date.today(),
+                               observacao=f'Consumo MP - Orca #{orcamento.numero} ({ref.nome})',
+                               criado_por=request.user,
+                           )
 
         orcamento.save()
         return JsonResponse({'status': 'ok'})
@@ -1383,6 +1420,31 @@ def estoque(request):
     return render(request, 'estoque.html', context)
 
 
+def eh_produto_materia_prima(produto):
+    """Retorna True se o produto pertence à categoria Matéria Prima."""
+    if not produto or not produto.subcategoria or not produto.subcategoria.categoria:
+        return False
+    nome = (produto.subcategoria.categoria.nome or '').strip().lower()
+    return nome in ('matéria prima', 'materia prima')
+
+
+def quantidade_entrada_base_estoque(produto, quantidade):
+    """Converte entrada em unidades para base de estoque (ml/g) quando for Matéria Prima."""
+    try:
+        qtd = float(quantidade)
+    except (TypeError, ValueError):
+        return 0
+    if not eh_produto_materia_prima(produto):
+        return qtd
+    try:
+        peso = float(produto.peso or 0)
+    except (TypeError, ValueError):
+        peso = 0
+    if peso <= 0:
+        return qtd
+    return qtd * peso
+
+
 @login_required
 @require_POST
 def criar_item_estoque(request):
@@ -1398,11 +1460,12 @@ def criar_item_estoque(request):
     quantidade_nova = float(request.POST.get('quantidade', 0))
     tipo_mov = request.POST.get('tipo', 'entrada')  # 'entrada' ou 'saida'
     if produto:
+        quantidade_mov = quantidade_entrada_base_estoque(produto, quantidade_nova) if tipo_mov == 'entrada' else quantidade_nova
         item = ItemEstoque.objects.filter(empresa=empresa, produto=produto).first()
         if item:
             # Já existe, soma ou subtrai do estoque atual
             if tipo_mov == 'entrada':
-                item.quantidade = float(item.quantidade) + quantidade_nova
+                item.quantidade = float(item.quantidade) + quantidade_mov
             elif tipo_mov == 'saida':
                 item.quantidade = float(item.quantidade) - quantidade_nova
                 # Dar baixa nas matérias-primas vinculadas (ficha técnica)
@@ -1426,7 +1489,7 @@ def criar_item_estoque(request):
             MovimentacaoEstoque.objects.create(
                 item=item,
                 tipo=tipo_mov,
-                quantidade=quantidade_nova,
+                quantidade=quantidade_mov,
                 data=dt_date.today(),
                 observacao='Movimentação manual',
                 criado_por=request.user,
@@ -1438,7 +1501,7 @@ def criar_item_estoque(request):
                 produto=produto,
                 nome=request.POST.get('nome', ''),
                 codigo=request.POST.get('codigo', ''),
-                quantidade=quantidade_nova if tipo_mov == 'entrada' else -quantidade_nova,
+                quantidade=quantidade_mov if tipo_mov == 'entrada' else -quantidade_nova,
                 unidade=request.POST.get('unidade', 'un'),
                 preco_custo=request.POST.get('preco_custo', 0),
                 estoque_minimo=request.POST.get('estoque_minimo', 0),
@@ -1447,7 +1510,7 @@ def criar_item_estoque(request):
             MovimentacaoEstoque.objects.create(
                 item=item,
                 tipo=tipo_mov,
-                quantidade=quantidade_nova,
+                quantidade=quantidade_mov,
                 data=dt_date.today(),
                 observacao='Estoque inicial' if tipo_mov == 'entrada' else 'Saída inicial',
                 criado_por=request.user,
@@ -1642,8 +1705,9 @@ def movimentar_wizard(request):
             empresa=empresa, produto=p,
             defaults={'nome': p.nome, 'quantidade': 0, 'unidade': p.unidade}
         )
+        quantidade_mov = quantidade_entrada_base_estoque(p, qtd) if tipo == 'entrada' else qtd
         if tipo == 'entrada':
-            item.quantidade = float(item.quantidade) + qtd
+            item.quantidade = float(item.quantidade) + quantidade_mov
         elif tipo == 'saida':
             item.quantidade = float(item.quantidade) - qtd
         item.save()
@@ -1653,7 +1717,7 @@ def movimentar_wizard(request):
         else:
             obs = 'Movimentação individual'
         MovimentacaoEstoque.objects.create(
-            item=item, tipo=tipo, quantidade=qtd,
+            item=item, tipo=tipo, quantidade=quantidade_mov,
             data=dt_date.today(), observacao=obs,
             criado_por=request.user,
         )
@@ -2024,14 +2088,15 @@ def criar_entrada_comercial(request):
             empresa=empresa, produto=produto,
             defaults={'nome': produto.nome, 'quantidade': 0, 'unidade': produto.unidade}
         )
-        item_estoque.quantidade = float(item_estoque.quantidade) + qtd
+        quantidade_mov = quantidade_entrada_base_estoque(produto, qtd)
+        item_estoque.quantidade = float(item_estoque.quantidade) + quantidade_mov
         if preco > 0:
             item_estoque.preco_custo = preco
         item_estoque.save()
         MovimentacaoEstoque.objects.create(
             item=item_estoque,
             tipo='entrada',
-            quantidade=qtd,
+            quantidade=quantidade_mov,
             data=data,
             observacao=f'Entrada Comercial #{entrada.id}' + (f' - {fornecedor.nome}' if fornecedor else ''),
             criado_por=request.user,

@@ -292,6 +292,25 @@
   </div>
 </div>
 
+<!-- ===================== MODAL CONFIRMAR EXCLUSÃO ORÇAMENTO ===================== -->
+<div class="modal fade" id="modalConfirmarExclusaoOrcamento" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">Excluir este orçamento?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarExclusaoOrcamento">Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -644,6 +663,8 @@ $(function() {
   // ORÇAMENTOS (SAÍDAS)
   // =============================================
   const modalOrc = new bootstrap.Modal(document.getElementById('modalOrcamento'));
+  const modalConfirmarExclusaoOrc = new bootstrap.Modal(document.getElementById('modalConfirmarExclusaoOrcamento'));
+  let urlExclusaoOrcamento = null;
   let editandoId = null;
 
   // Autocomplete de clientes (jQuery puro, sem jQuery UI)
@@ -955,10 +976,19 @@ $(function() {
   });
 
   $(document).on('click', '.btnExcluir', function() {
-    if (!confirm("Excluir este orçamento?")) return;
-    $.post($(this).data('url'), { csrfmiddlewaretoken: $("input[name=csrfmiddlewaretoken]").first().val() })
+    urlExclusaoOrcamento = $(this).data('url');
+    modalConfirmarExclusaoOrc.show();
+  });
+
+  $('#btnConfirmarExclusaoOrcamento').on('click', function() {
+    if (!urlExclusaoOrcamento) return;
+    $.post(urlExclusaoOrcamento, { csrfmiddlewaretoken: $("input[name=csrfmiddlewaretoken]").first().val() })
       .done(res => { if (res.status === "ok") { location.reload(); } else { alert("Erro: " + res.mensagem); } })
       .fail(() => alert("Erro no servidor."));
+  });
+
+  $('#modalConfirmarExclusaoOrcamento').on('hidden.bs.modal', function() {
+    urlExclusaoOrcamento = null;
   });
 
 });
