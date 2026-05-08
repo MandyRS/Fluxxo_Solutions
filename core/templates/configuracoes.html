@@ -318,8 +318,8 @@
           <input type="hidden" id="produto-id" name="id">
           <input type="hidden" id="produto-categoria" name="categoria" value="produto">
           <input type="hidden" id="produto-subcategoria" name="subcategoria">
-          <div class="mb-2"><label>Código</label><input type="text" name="codigo" class="form-control"></div>
-          <div class="mb-2"><label>Nome</label><input type="text" name="nome" class="form-control"></div>
+          <div class="mb-2"><label>Código <span class="text-danger">*</span></label><input type="text" name="codigo" class="form-control" required></div>
+          <div class="mb-2"><label>Nome <span class="text-danger">*</span></label><input type="text" name="nome" class="form-control" required></div>
           <div class="mb-2"><label>Descrição</label><input type="text" name="descricao" class="form-control"></div>
           <div class="row g-2 mb-2">
             <div class="col-6"><label>Peso</label><input type="text" name="peso" id="produto-peso" class="form-control"></div>
@@ -420,12 +420,13 @@
                 <th>Peso</th>
                 <th>Unidade</th>
                 <th>Preço Unitário</th>
-                <th>Estoque Inicial</th>
+                <th>Estoque Inicial (Unid)</th>
+                <th>Estoque Inicial por Tipo</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody id="tbodyProdutosCategoriaModal">
-              <tr><td colspan="8" class="text-center text-muted">Selecione uma subcategoria para listar os produtos.</td></tr>
+              <tr><td colspan="9" class="text-center text-muted">Selecione uma subcategoria para listar os produtos.</td></tr>
             </tbody>
           </table>
         </div>
@@ -595,7 +596,8 @@ var produtosPorSubcategoria = {
         peso: "{{ p.peso|default_if_none:''|floatformat:2 }}",
         unidade: "{{ p.unidade|default_if_none:''|escapejs }}",
         preco_unitario: "{{ p.preco_unitario|default_if_none:''|floatformat:2 }}",
-        estoque_inicial: "{{ p.estoque_atual|default_if_none:'0'|floatformat:2 }}"
+        estoque_inicial: "{{ p.estoque_atual|default_if_none:'0'|floatformat:2 }}",
+        is_materia_prima: {% if cat.nome|lower == 'matéria prima' or cat.nome|lower == 'materia prima' %}true{% else %}false{% endif %}
       }{% if not forloop.last %},{% endif %}
       {% endfor %}
     ]{% if not forloop.last or not forloop.parentloop.last %},{% endif %}
@@ -817,22 +819,59 @@ $(document).ready(function(){
     });
   }
 
+  function parseNumeroBr(valor) {
+    if (valor === null || valor === undefined) return 0;
+    var texto = String(valor).trim();
+    if (!texto) return 0;
+
+    // Aceita tanto formato pt-BR (1.234,56) quanto formato padrão (1234.56)
+    if (texto.indexOf(',') !== -1) {
+      texto = texto.replace(/\./g, '').replace(',', '.');
+    }
+
+    var numero = parseFloat(texto);
+    return isNaN(numero) ? 0 : numero;
+  }
+
+  function formatarNumeroBr(valor) {
+    return Number(valor || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function obterEstoqueUnidETipo(produto) {
+    var estoqueTipo = parseNumeroBr(produto.estoque_inicial);
+    var peso = parseNumeroBr(produto.peso);
+    var estoqueUnid = estoqueTipo;
+
+    if (produto.is_materia_prima && peso > 0) {
+      estoqueUnid = estoqueTipo / peso;
+    }
+
+    return {
+      estoqueUnid: formatarNumeroBr(estoqueUnid),
+      estoqueTipo: formatarNumeroBr(estoqueTipo) + ' ' + (produto.unidade || '-')
+    };
+  }
+
   function renderTabelaProdutosModal(subcategoriaId) {
     var produtos = produtosPorSubcategoria[String(subcategoriaId)] || [];
     var $tbody = $('#tbodyProdutosCategoriaModal');
     $tbody.empty();
 
     if (!subcategoriaId) {
-      $tbody.html('<tr><td colspan="8" class="text-center text-muted">Selecione uma subcategoria para listar os produtos.</td></tr>');
+      $tbody.html('<tr><td colspan="9" class="text-center text-muted">Selecione uma subcategoria para listar os produtos.</td></tr>');
       return;
     }
 
     if (!produtos.length) {
-      $tbody.html('<tr><td colspan="8" class="text-center text-muted">Nenhum produto nesta subcategoria.</td></tr>');
+      $tbody.html('<tr><td colspan="9" class="text-center text-muted">Nenhum produto nesta subcategoria.</td></tr>');
       return;
     }
 
     produtos.forEach(function(p) {
+      var estoques = obterEstoqueUnidETipo(p);
       var row = '<tr>' +
         '<td>' + (p.codigo || '-') + '</td>' +
         '<td>' + (p.nome || '-') + '</td>' +
@@ -840,7 +879,8 @@ $(document).ready(function(){
         '<td>' + (p.peso || '0,00') + '</td>' +
         '<td>' + (p.unidade || '-') + '</td>' +
         '<td>R$ ' + (p.preco_unitario || '0,00') + '</td>' +
-        '<td>' + (p.estoque_inicial || '0,00') + '</td>' +
+        '<td>' + estoques.estoqueUnid + '</td>' +
+        '<td>' + estoques.estoqueTipo + '</td>' +
         '<td>' +
           '<button class="btn btn-sm btn-info btn-editar-produto me-1" data-id="' + p.id + '">Editar</button>' +
           '<button class="btn btn-sm btn-danger btn-excluir-produto" data-id="' + p.id + '">Excluir</button>' +

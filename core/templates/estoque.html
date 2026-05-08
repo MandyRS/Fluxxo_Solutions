@@ -114,7 +114,14 @@
                 {% if item.produto and item.produto.subcategoria %}{{ item.produto.subcategoria.nome }}{% else %}-{% endif %}
               </div>
               <div class="mt-auto pt-2 border-top border-secondary d-flex justify-content-between align-items-center">
-                <span class="fs-5 fw-bold text-white">{{ item.quantidade|br_number:2 }} {{ item.unidade }}</span>
+                <div class="d-flex flex-column">
+                  <span class="fs-5 fw-bold text-white">{{ item.quantidade|br_number:2 }} {{ item.unidade }}</span>
+                  {% if item.produto and item.produto.peso and item.produto.peso > 0 %}
+                    <span class="small text-white-50">
+                      {{ item.quantidade|div_float:item.produto.peso|br_number:2 }} un
+                    </span>
+                  {% endif %}
+                </div>
                 <button class="btn btn-sm btn-outline-primary btnVerMovimentacoes" data-id="{{ item.id }}">Ver Mov.</button>
               </div>
             </div>

@@ -13,6 +13,13 @@ def br_number(value, decimal_places=2):
         return value
 
 @register.filter
+def div_float(value, divisor):
+    try:
+        return float(value) / float(divisor)
+    except (ValueError, TypeError, ZeroDivisionError):
+        return 0
+
+@register.filter
 def get_materia_prima_subcats(categorias_list):
     result = []
     for cat in categorias_list:

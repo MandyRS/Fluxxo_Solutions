@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
+from django.db import transaction
 from django.db.models import (
     Sum, F, FloatField, Q,
     Prefetch, OuterRef, Subquery, DecimalField,
@@ -554,14 +555,21 @@ def criar_produto_ajax(request):
         except SubcategoriaProduto.DoesNotExist:
             subcategoria = None
 
+    codigo = request.POST.get('codigo', '').strip()
+    nome = request.POST.get('nome', '').strip()
+    if not codigo:
+        return JsonResponse({'status': 'erro', 'mensagem': 'O campo Código é obrigatório.'})
+    if not nome:
+        return JsonResponse({'status': 'erro', 'mensagem': 'O campo Nome é obrigatório.'})
+
     estoque_inicial_item = estoque_inicial
     if eh_categoria_materia_prima(subcategoria):
         estoque_inicial_item = estoque_inicial * peso
 
     produto = Produto.objects.create(
         empresa=empresa,
-        codigo=request.POST.get('codigo'),
-        nome=request.POST.get('nome'),
+        codigo=codigo,
+        nome=nome,
         descricao=request.POST.get('descricao'),
         preco=preco,
         peso=peso,
@@ -672,8 +680,15 @@ def editar_produto(request, id):
                 except (TypeError, ValueError):
                     return 0
 
-            produto.codigo = request.POST.get('codigo', produto.codigo)
-            produto.nome = request.POST.get('nome', produto.nome)
+            _codigo_novo = request.POST.get('codigo', '').strip()
+            _nome_novo = request.POST.get('nome', '').strip()
+            if not _codigo_novo:
+                return JsonResponse({'status': 'erro', 'mensagem': 'O campo Código é obrigatório.'})
+            if not _nome_novo:
+                return JsonResponse({'status': 'erro', 'mensagem': 'O campo Nome é obrigatório.'})
+
+            produto.codigo = _codigo_novo
+            produto.nome = _nome_novo
             produto.descricao = request.POST.get('descricao', produto.descricao)
             produto.peso = parse_decimal_br(request.POST.get('peso', produto.peso))
             produto.unidade = request.POST.get('unidade', produto.unidade) or 'un'
@@ -880,7 +895,7 @@ def criar_orcamento(request):
                 MovimentacaoEstoque.objects.create(
                     item=item_est, tipo='saida', quantidade=qtd,
                     data=dt_date.today(),
-                    observacao=f'Venda - Orca #{orcamento.numero}',
+                    observacao=f'Venda - Orca #{orcamento.numero} [ORC:{orcamento.id}]',
                     criado_por=request.user,
                 )
                 # Baixa automática nas matérias-primas (ficha técnica)
@@ -894,7 +909,7 @@ def criar_orcamento(request):
                            MovimentacaoEstoque.objects.create(
                                item=item_mp, tipo='saida', quantidade=consumo,
                                data=dt_date.today(),
-                               observacao=f'Consumo MP - Orca #{orcamento.numero} ({ref.nome})',
+                               observacao=f'Consumo MP - Orca #{orcamento.numero} [ORC:{orcamento.id}] ({ref.nome})',
                                criado_por=request.user,
                            )
 
@@ -968,7 +983,9 @@ def excluir_orcamento(request, orcamento_id):
         empresa=empresa,
     )
     try:
-        orcamento.delete()
+        with transaction.atomic():
+            reverter_estoque_orcamento(orcamento, empresa)
+            orcamento.delete()
         return JsonResponse({"status": "ok"})
     except Exception as e:
         return JsonResponse({"status": "erro", "mensagem": str(e)})
@@ -1443,6 +1460,87 @@ def quantidade_entrada_base_estoque(produto, quantidade):
     if peso <= 0:
         return qtd
     return qtd * peso
+
+
+def _acumular_ajuste(ajustes_por_item_id, item_estoque, delta):
+    """Acumula ajuste de quantidade para aplicar em lote no estoque."""
+    if not item_estoque:
+        return
+    if item_estoque.id not in ajustes_por_item_id:
+        ajustes_por_item_id[item_estoque.id] = {'item': item_estoque, 'delta': 0.0}
+    ajustes_por_item_id[item_estoque.id]['delta'] += float(delta)
+
+
+def _aplicar_ajustes_estoque(ajustes_por_item_id):
+    """Aplica os ajustes acumulados por item de estoque."""
+    for _, dados in ajustes_por_item_id.items():
+        item = dados['item']
+        delta = float(dados['delta'])
+        if delta == 0:
+            continue
+        item.quantidade = float(item.quantidade) + delta
+        item.save(update_fields=['quantidade', 'atualizado_em'])
+
+
+def reverter_estoque_orcamento(orcamento, empresa):
+    """Reverte saídas de estoque e remove movimentações ligadas ao orçamento."""
+    ajustes = {}
+    for item_orc in orcamento.itens.select_related('produto').all():
+        produto = item_orc.produto
+        if not produto:
+            continue
+
+        try:
+            qtd_produto = float(item_orc.quantidade or 0)
+        except (TypeError, ValueError):
+            qtd_produto = 0
+        if qtd_produto <= 0:
+            continue
+
+        item_est = ItemEstoque.objects.filter(empresa=empresa, produto=produto).first()
+        _acumular_ajuste(ajustes, item_est, qtd_produto)
+
+        for mp in ProdutoMateriaPrima.objects.filter(produto_final=produto, empresa=empresa):
+            try:
+                consumo = float(mp.quantidade or 0) * qtd_produto
+            except (TypeError, ValueError):
+                consumo = 0
+            item_mp = ItemEstoque.objects.filter(empresa=empresa, produto=mp.materia_prima).first()
+            _acumular_ajuste(ajustes, item_mp, consumo)
+
+    _aplicar_ajustes_estoque(ajustes)
+
+    identificador = f'[ORC:{orcamento.id}]'
+    filtros_legado = (
+        Q(observacao__startswith=f'Venda - Orca #{orcamento.numero}') |
+        Q(observacao__startswith=f'Consumo MP - Orca #{orcamento.numero}')
+    )
+    MovimentacaoEstoque.objects.filter(
+        item__empresa=empresa,
+        tipo='saida',
+    ).filter(
+        Q(observacao__contains=identificador) | filtros_legado
+    ).delete()
+
+
+def reverter_estoque_entrada_comercial(entrada, empresa):
+    """Reverte entradas de estoque e remove movimentações ligadas à entrada comercial."""
+    ajustes = {}
+    for item_data in entrada.itens.select_related('produto').all():
+        item_estoque = ItemEstoque.objects.filter(empresa=empresa, produto=item_data.produto).first()
+        quantidade_mov = quantidade_entrada_base_estoque(item_data.produto, item_data.quantidade)
+        _acumular_ajuste(ajustes, item_estoque, -quantidade_mov)
+
+    _aplicar_ajustes_estoque(ajustes)
+
+    identificador = f'[ENT:{entrada.id}]'
+    MovimentacaoEstoque.objects.filter(
+        item__empresa=empresa,
+        tipo='entrada',
+    ).filter(
+        Q(observacao__contains=identificador) |
+        Q(observacao__startswith=f'Entrada Comercial #{entrada.id}')
+    ).delete()
 
 
 @login_required
@@ -2098,7 +2196,7 @@ def criar_entrada_comercial(request):
             tipo='entrada',
             quantidade=quantidade_mov,
             data=data,
-            observacao=f'Entrada Comercial #{entrada.id}' + (f' - {fornecedor.nome}' if fornecedor else ''),
+            observacao=f'Entrada Comercial #{entrada.id} [ENT:{entrada.id}]' + (f' - {fornecedor.nome}' if fornecedor else ''),
             criado_por=request.user,
         )
     return JsonResponse({'status': 'ok'})
@@ -2146,21 +2244,9 @@ def excluir_entrada_comercial(request, id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
     empresa = get_empresa_da_sessao(request)
     entrada = get_object_or_404(EntradaComercial, id=id, empresa=empresa)
-    # Reverter estoque
-    for item_data in entrada.itens.select_related('produto').all():
-        try:
-            item_estoque = ItemEstoque.objects.get(empresa=empresa, produto=item_data.produto)
-            item_estoque.quantidade = float(item_estoque.quantidade) - float(item_data.quantidade)
-            item_estoque.save()
-            # Remover movimentação correspondente
-            MovimentacaoEstoque.objects.filter(
-                item=item_estoque,
-                tipo='entrada',
-                observacao__startswith=f'Entrada Comercial #{entrada.id}',
-            ).delete()
-        except ItemEstoque.DoesNotExist:
-            pass
-    entrada.delete()
+    with transaction.atomic():
+        reverter_estoque_entrada_comercial(entrada, empresa)
+        entrada.delete()
     return JsonResponse({'status': 'ok'})
 
 
@@ -2188,18 +2274,7 @@ def editar_entrada_comercial(request, id):
         return JsonResponse({'status': 'erro', 'mensagem': 'Data inválida.'})
 
     # 1. Reverter estoque e movimentações dos itens antigos
-    for item_data in entrada.itens.select_related('produto').all():
-        try:
-            item_est = ItemEstoque.objects.get(empresa=empresa, produto=item_data.produto)
-            item_est.quantidade = float(item_est.quantidade) - float(item_data.quantidade)
-            item_est.save()
-            MovimentacaoEstoque.objects.filter(
-                item=item_est,
-                tipo='entrada',
-                observacao__startswith=f'Entrada Comercial #{entrada.id}',
-            ).delete()
-        except ItemEstoque.DoesNotExist:
-            pass
+    reverter_estoque_entrada_comercial(entrada, empresa)
 
     # 2. Atualizar campos da entrada
     fornecedor = None
@@ -2235,13 +2310,14 @@ def editar_entrada_comercial(request, id):
             empresa=empresa, produto=produto,
             defaults={'nome': produto.nome, 'quantidade': 0, 'unidade': produto.unidade}
         )
-        item_est.quantidade = float(item_est.quantidade) + qtd
+        quantidade_mov = quantidade_entrada_base_estoque(produto, qtd)
+        item_est.quantidade = float(item_est.quantidade) + quantidade_mov
         if preco > 0:
             item_est.preco_custo = preco
         item_est.save()
         MovimentacaoEstoque.objects.create(
-            item=item_est, tipo='entrada', quantidade=qtd, data=nova_data,
-            observacao=f'Entrada Comercial #{entrada.id}' + (f' - {fornecedor.nome}' if fornecedor else ''),
+            item=item_est, tipo='entrada', quantidade=quantidade_mov, data=nova_data,
+            observacao=f'Entrada Comercial #{entrada.id} [ENT:{entrada.id}]' + (f' - {fornecedor.nome}' if fornecedor else ''),
             criado_por=request.user,
         )
     return JsonResponse({'status': 'ok'})
