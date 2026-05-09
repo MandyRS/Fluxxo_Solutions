@@ -110,7 +110,7 @@
       {% if categorias_list|get_materia_prima_subcats|length > 0 %}
         <div class="d-flex align-items-center justify-content-between mb-2">
           <h4 class="mb-4 text-white">Matéria Prima por Subcategoria</h4>
-          <span class="text-muted small">Escolha uma subcategoria para ver e gerenciar os produtos.</span>
+          <span class="text-white small">Escolha uma subcategoria para ver e gerenciar os produtos.</span>
         </div>
         <div class="row g-3">
           {% for sub in categorias_list|get_materia_prima_subcats %}
@@ -130,7 +130,7 @@
                   </button>
                 </div>
                 <p class="card-text small text-white mb-2">{{ sub.descricao|default:'Sem descrição.' }}</p>
-                <div class="small text-muted">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
+                <div class="small text-white">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
               </div>
             </div>
           </div>
@@ -342,9 +342,9 @@
           <!-- Ficha Técnica de Matéria-Prima (opcional) -->
           <div class="form-check form-switch mb-2 mt-3">
             <input class="form-check-input" type="checkbox" id="toggleFichaTecnica">
-            <label class="form-check-label" for="toggleFichaTecnica">Definir ficha técnica de matéria-prima <span class="text-muted">(opcional)</span></label>
+            <label class="form-check-label text-white" for="toggleFichaTecnica">Definir ficha técnica de matéria-prima <span class="text-white">(opcional)</span></label>
           </div>
-          <div id="secaoFichaTecnica" style="display:none">
+          <div id="secaoFichaTecnica" class="text-white" style="display:none">
             <hr>
             <div class="mb-2">
               <label class="form-label fw-semibold mb-0">Ficha Técnica de Matéria-Prima</label>
@@ -370,14 +370,14 @@
                     </select>
                   </div>
                   {% empty %}
-                  <div class="col-12 text-muted small">Nenhum produto nesta subcategoria.</div>
+                  <div class="col-12 text-white small">Nenhum produto nesta subcategoria.</div>
                   {% endfor %}
                 </div>
               </div>
             {% empty %}
-              <div class="text-muted small">Nenhuma subcategoria de matéria-prima cadastrada.</div>
+              <div class="text-white small">Nenhuma subcategoria de matéria-prima cadastrada.</div>
             {% endfor %}
-            <small class="text-muted">A baixa no estoque de matéria-prima será feita automaticamente ao registrar uma saída deste produto.</small>
+            <small class="text-white">A baixa no estoque de matéria-prima será feita automaticamente ao registrar uma saída deste produto.</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -971,11 +971,18 @@ $(document).ready(function(){
         $('#secaoFichaTecnica').show();
         // Marca os checkboxes e preenche as quantidades
         mps.forEach(function(mp) {
-          var $chk = $('#secaoFichaTecnica .mp-checkbox[value="'+mp.id+'"]');
-          $chk.prop('checked', true);
-          var $row = $chk.closest('.d-flex');
-          $row.find('input[type=number]').val(mp.quantidade);
-          if (mp.unidade) { $row.find('select').val(mp.unidade); }
+          // Procura o checkbox por valor (converte para string para garantir compatibilidade)
+          var mpIdStr = String(mp.id);
+          var $chk = $('#secaoFichaTecnica .mp-checkbox').filter(function() {
+            return String($(this).val()) === mpIdStr;
+          });
+          
+          if ($chk.length > 0) {
+            $chk.prop('checked', true).trigger('change');
+            var $row = $chk.closest('.d-flex');
+            $row.find('input[type=number]').val(mp.quantidade);
+            if (mp.unidade) { $row.find('select').val(mp.unidade); }
+          }
         });
       } else {
         $('#toggleFichaTecnica').prop('checked', false);

@@ -753,6 +753,7 @@ def editar_produto(request, id):
             'unidade': produto.unidade,
             'preco_unitario': format_real(produto.preco_unitario),
             'categoria': produto.categoria,
+            'subcategoria': produto.subcategoria.id if produto.subcategoria else '',
             'estoque_inicial': format_real(estoque_inicial),
             'materias_primas': materias_primas,
         }
