@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load extra_filters %}
+
+{% block topbar_title %}Produção{% endblock %}
+
+{% block content %}
+<style>
+  .prod-card {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 14px;
+    transition: transform .15s, border-color .15s;
+  }
+  .prod-card:hover { transform: translateY(-2px); border-color: rgba(99,102,241,.35); }
+  .badge-tipo {
+    font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .section-title { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: #64748b; font-weight: 700; }
+</style>
+
+<div class="px-2 px-md-3">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+      <h4 class="fw-bold mb-0" style="color:#f1f5f9">Fichas de Produção</h4>
+      <span class="small" style="color:#64748b">{{ fichas|length }} ficha{% if fichas|length != 1 %}s{% endif %} registrada{% if fichas|length != 1 %}s{% endif %}</span>
+    </div>
+    <a href="{% url 'core:nova_ficha_producao' %}" class="btn btn-primary btn-sm px-4">
+      <i class="bi bi-plus-lg me-1"></i> Nova Ficha
+    </a>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if fichas %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th style="width:80px">#</th>
+          <th>Data</th>
+          <th>Produto</th>
+          <th class="text-center">Qtd. Produzida</th>
+          <th>Responsável</th>
+          <th>Tanques / Máquina</th>
+          <th class="text-center">Itens</th>
+          <th class="text-center">Perdas</th>
+          <th class="text-end">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ficha in fichas %}
+        <tr>
+          <td class="fw-bold" style="color:#a5b4fc">FP#{{ ficha.numero|stringformat:"04d" }}</td>
+          <td>{{ ficha.data|date:"d/m/Y" }}</td>
+          <td>
+            {% if ficha.produto_final %}
+              <span class="fw-semibold">{{ ficha.produto_final.nome }}</span>
+            {% elif ficha.descricao_produto %}
+              <span class="text-muted fst-italic">{{ ficha.descricao_produto }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if ficha.quantidade_produzida %}
+              <span class="fw-semibold">{{ ficha.quantidade_produzida|floatformat:"-3" }} {{ ficha.unidade_produzida }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ ficha.responsavel|default:"—" }}</td>
+          <td>
+            <span class="small text-muted">
+              {% if ficha.tanques %}🛢 {{ ficha.tanques }}{% endif %}
+              {% if ficha.tanques and ficha.maquina %} · {% endif %}
+              {% if ficha.maquina %}⚙ {{ ficha.maquina }}{% endif %}
+              {% if not ficha.tanques and not ficha.maquina %}—{% endif %}
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-primary bg-opacity-20 text-primary">{{ ficha.itens.count }}</span>
+          </td>
+          <td class="text-center">
+            {% if ficha.perdas.count > 0 %}
+              <span class="badge bg-danger bg-opacity-20 text-danger">{{ ficha.perdas.count }}</span>
+            {% else %}
+              <span class="text-muted small">0</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'core:detalhe_ficha_producao' ficha.pk %}" class="btn btn-sm btn-outline-secondary" title="Detalhes">
+                <i class="bi bi-eye"></i>
+              </a>
+              <a href="{% url 'core:editar_ficha_producao' ficha.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <form method="post" action="{% url 'core:excluir_ficha_producao' ficha.pk %}" class="d-inline"
+                    onsubmit="return confirm('Excluir FP#{{ ficha.numero }}?')">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-5" style="color:#64748b">
+    <i class="bi bi-clipboard2-pulse fs-1 d-block mb-3" style="color:#334155"></i>
+    <p class="fw-semibold mb-1">Nenhuma ficha de produção registrada</p>
+    <p class="small">Clique em <strong>Nova Ficha</strong> para começar.</p>
+    <a href="{% url 'core:nova_ficha_producao' %}" class="btn btn-primary mt-2 px-4">
+      <i class="bi bi-plus-lg me-1"></i> Nova Ficha
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

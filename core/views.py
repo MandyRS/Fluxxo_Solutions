@@ -1287,6 +1287,11 @@ def configuracoes(request):
         estoque_atual=estoque_subquery
     )
 
+    # Garante que as categorias fixas de produção existam
+    cat_embalagem, _ = CategoriaProduto.objects.get_or_create(empresa=empresa, nome='Embalagem', defaults={'descricao': ''})
+    cat_tampa, _ = CategoriaProduto.objects.get_or_create(empresa=empresa, nome='Tampa', defaults={'descricao': ''})
+    cat_rotulo, _ = CategoriaProduto.objects.get_or_create(empresa=empresa, nome='Rótulo', defaults={'descricao': ''})
+
     context = {
         'clientes_list': Cliente.objects.filter(empresa=empresa),
         'produtos_list': get_produtos_list('produto'),
@@ -1306,6 +1311,9 @@ def configuracoes(request):
                     )
                 )
             ),
+        'cat_embalagem_id': cat_embalagem.id,
+        'cat_tampa_id': cat_tampa.id,
+        'cat_rotulo_id': cat_rotulo.id,
         'empresa': empresa,
     }
     return render(request, 'configuracoes.html', context)
@@ -2485,4 +2493,254 @@ def perfil(request):
 def documentacao(request):
     """Exibe a página de documentação do sistema."""
     return render(request, 'documentacao.html')
+
+
+# ============================================================
+# MÓDULO DE PRODUÇÃO
+# ============================================================
+
+from .models import FichaProducao, ItemFichaProducao, PerdaProducao
+
+
+@login_required
+def producao(request):
+    """Lista todas as fichas de produção da empresa."""
+    empresa = get_empresa_da_sessao(request)
+    if not empresa:
+        return redirect('core:selecionar_empresa')
+
+    fichas = FichaProducao.objects.filter(empresa=empresa).prefetch_related('itens', 'perdas')
+    return render(request, 'producao.html', {'empresa': empresa, 'fichas': fichas})
+
+
+@login_required
+def nova_ficha_producao(request):
+    """Cria uma nova ficha de produção (cabeçalho + itens + perdas via POST JSON)."""
+    empresa = get_empresa_da_sessao(request)
+    if not empresa:
+        return redirect('core:selecionar_empresa')
+
+    produtos = Produto.objects.filter(empresa=empresa).order_by('nome')
+
+    if request.method == 'POST':
+        data        = request.POST.get('data')
+        produto_id  = request.POST.get('produto_final') or None
+        desc_prod   = request.POST.get('descricao_produto', '').strip()
+        qtd_prod    = request.POST.get('quantidade_produzida') or 0
+        unid_prod   = request.POST.get('unidade_produzida', 'un')
+        tanques     = request.POST.get('tanques', '').strip()
+        maquina     = request.POST.get('maquina', '').strip()
+        responsavel = request.POST.get('responsavel', '').strip()
+        observacoes = request.POST.get('observacoes', '').strip()
+
+        if not data:
+            messages.error(request, 'A data é obrigatória.')
+            return render(request, 'form_producao.html', {'empresa': empresa, 'produtos': produtos})
+
+        produto_final = None
+        if produto_id:
+            try:
+                produto_final = Produto.objects.get(pk=produto_id, empresa=empresa)
+            except Produto.DoesNotExist:
+                pass
+
+        with transaction.atomic():
+            ficha = FichaProducao.objects.create(
+                empresa=empresa,
+                data=data,
+                produto_final=produto_final,
+                descricao_produto=desc_prod,
+                quantidade_produzida=qtd_prod,
+                unidade_produzida=unid_prod,
+                tanques=tanques,
+                maquina=maquina,
+                responsavel=responsavel,
+                observacoes=observacoes,
+                criado_por=request.user,
+            )
+
+            # ── Itens (insumos / embalagens / tampas / rótulos) ──
+            tipos_item   = request.POST.getlist('item_tipo')
+            prod_ids     = request.POST.getlist('item_produto')
+            descs        = request.POST.getlist('item_descricao')
+            qtds         = request.POST.getlist('item_quantidade')
+            unids        = request.POST.getlist('item_unidade')
+
+            for tipo, pid, desc, qtd, unid in zip(tipos_item, prod_ids, descs, qtds, unids):
+                if not qtd:
+                    continue
+                prod_obj = None
+                if pid:
+                    try:
+                        prod_obj = Produto.objects.get(pk=pid, empresa=empresa)
+                    except Produto.DoesNotExist:
+                        pass
+                ItemFichaProducao.objects.create(
+                    ficha=ficha,
+                    tipo=tipo,
+                    produto=prod_obj,
+                    descricao=desc,
+                    quantidade=qtd,
+                    unidade=unid,
+                )
+
+            # ── Perdas ──
+            p_prod_ids = request.POST.getlist('perda_produto')
+            p_descs    = request.POST.getlist('perda_descricao')
+            p_qtds     = request.POST.getlist('perda_quantidade')
+            p_unids    = request.POST.getlist('perda_unidade')
+            p_motivos  = request.POST.getlist('perda_motivo')
+
+            for pid, desc, qtd, unid, motivo in zip(p_prod_ids, p_descs, p_qtds, p_unids, p_motivos):
+                if not qtd:
+                    continue
+                prod_obj = None
+                if pid:
+                    try:
+                        prod_obj = Produto.objects.get(pk=pid, empresa=empresa)
+                    except Produto.DoesNotExist:
+                        pass
+                PerdaProducao.objects.create(
+                    ficha=ficha,
+                    produto=prod_obj,
+                    descricao=desc,
+                    quantidade=qtd,
+                    unidade=unid,
+                    motivo=motivo,
+                )
+
+        messages.success(request, f'Ficha FP#{ficha.numero:04d} criada com sucesso!')
+        return redirect('core:producao')
+
+    return render(request, 'form_producao.html', {'empresa': empresa, 'produtos': produtos})
+
+
+@login_required
+def detalhe_ficha_producao(request, ficha_id):
+    """Exibe o detalhe / impressão de uma ficha de produção."""
+    empresa = get_empresa_da_sessao(request)
+    if not empresa:
+        return redirect('core:selecionar_empresa')
+
+    ficha = get_object_or_404(FichaProducao, pk=ficha_id, empresa=empresa)
+    itens  = ficha.itens.all().order_by('tipo')
+    perdas = ficha.perdas.all()
+    return render(request, 'detalhe_producao.html', {
+        'empresa': empresa, 'ficha': ficha, 'itens': itens, 'perdas': perdas,
+    })
+
+
+@login_required
+def editar_ficha_producao(request, ficha_id):
+    """Edita uma ficha de produção existente."""
+    empresa = get_empresa_da_sessao(request)
+    if not empresa:
+        return redirect('core:selecionar_empresa')
+
+    ficha   = get_object_or_404(FichaProducao, pk=ficha_id, empresa=empresa)
+    produtos = Produto.objects.filter(empresa=empresa).order_by('nome')
+
+    if request.method == 'POST':
+        data        = request.POST.get('data')
+        produto_id  = request.POST.get('produto_final') or None
+        desc_prod   = request.POST.get('descricao_produto', '').strip()
+        qtd_prod    = request.POST.get('quantidade_produzida') or 0
+        unid_prod   = request.POST.get('unidade_produzida', 'un')
+        tanques     = request.POST.get('tanques', '').strip()
+        maquina     = request.POST.get('maquina', '').strip()
+        responsavel = request.POST.get('responsavel', '').strip()
+        observacoes = request.POST.get('observacoes', '').strip()
+
+        if not data:
+            messages.error(request, 'A data é obrigatória.')
+            return render(request, 'form_producao.html', {
+                'empresa': empresa, 'produtos': produtos, 'ficha': ficha,
+            })
+
+        produto_final = None
+        if produto_id:
+            try:
+                produto_final = Produto.objects.get(pk=produto_id, empresa=empresa)
+            except Produto.DoesNotExist:
+                pass
+
+        with transaction.atomic():
+            ficha.data               = data
+            ficha.produto_final      = produto_final
+            ficha.descricao_produto  = desc_prod
+            ficha.quantidade_produzida = qtd_prod
+            ficha.unidade_produzida  = unid_prod
+            ficha.tanques            = tanques
+            ficha.maquina            = maquina
+            ficha.responsavel        = responsavel
+            ficha.observacoes        = observacoes
+            ficha.save()
+
+            # Recriar itens e perdas
+            ficha.itens.all().delete()
+            ficha.perdas.all().delete()
+
+            tipos_item   = request.POST.getlist('item_tipo')
+            prod_ids     = request.POST.getlist('item_produto')
+            descs        = request.POST.getlist('item_descricao')
+            qtds         = request.POST.getlist('item_quantidade')
+            unids        = request.POST.getlist('item_unidade')
+
+            for tipo, pid, desc, qtd, unid in zip(tipos_item, prod_ids, descs, qtds, unids):
+                if not qtd:
+                    continue
+                prod_obj = None
+                if pid:
+                    try:
+                        prod_obj = Produto.objects.get(pk=pid, empresa=empresa)
+                    except Produto.DoesNotExist:
+                        pass
+                ItemFichaProducao.objects.create(
+                    ficha=ficha, tipo=tipo, produto=prod_obj,
+                    descricao=desc, quantidade=qtd, unidade=unid,
+                )
+
+            p_prod_ids = request.POST.getlist('perda_produto')
+            p_descs    = request.POST.getlist('perda_descricao')
+            p_qtds     = request.POST.getlist('perda_quantidade')
+            p_unids    = request.POST.getlist('perda_unidade')
+            p_motivos  = request.POST.getlist('perda_motivo')
+
+            for pid, desc, qtd, unid, motivo in zip(p_prod_ids, p_descs, p_qtds, p_unids, p_motivos):
+                if not qtd:
+                    continue
+                prod_obj = None
+                if pid:
+                    try:
+                        prod_obj = Produto.objects.get(pk=pid, empresa=empresa)
+                    except Produto.DoesNotExist:
+                        pass
+                PerdaProducao.objects.create(
+                    ficha=ficha, produto=prod_obj, descricao=desc,
+                    quantidade=qtd, unidade=unid, motivo=motivo,
+                )
+
+        messages.success(request, f'Ficha FP#{ficha.numero:04d} atualizada!')
+        return redirect('core:producao')
+
+    return render(request, 'form_producao.html', {
+        'empresa': empresa, 'produtos': produtos, 'ficha': ficha,
+        'itens': list(ficha.itens.values()),
+        'perdas': list(ficha.perdas.values()),
+    })
+
+
+@login_required
+@require_POST
+def excluir_ficha_producao(request, ficha_id):
+    """Exclui uma ficha de produção."""
+    empresa = get_empresa_da_sessao(request)
+    if not empresa:
+        return redirect('core:selecionar_empresa')
+
+    ficha = get_object_or_404(FichaProducao, pk=ficha_id, empresa=empresa)
+    numero = ficha.numero
+    ficha.delete()
+    messages.success(request, f'Ficha FP#{numero:04d} excluída.')
+    return redirect('core:producao')
 

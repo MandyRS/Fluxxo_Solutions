@@ -26,3 +26,12 @@ def get_materia_prima_subcats(categorias_list):
         if cat.nome.strip().lower() in ['matéria prima', 'materia prima']:
             result.extend(cat.subcategorias.all())
     return result
+
+@register.filter
+def get_subcats_by_nome(categorias_list, nome):
+    """Retorna subcategorias da CategoriaProduto cujo nome bate com o parâmetro (case-insensitive)."""
+    result = []
+    for cat in categorias_list:
+        if cat.nome.strip().lower() == nome.strip().lower():
+            result.extend(cat.subcategorias.all())
+    return result

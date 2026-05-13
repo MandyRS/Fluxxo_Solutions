@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load extra_filters %}
+
+{% block topbar_title %}Ficha FP#{{ ficha.numero|stringformat:"04d" }}{% endblock %}
+
+{% block content %}
+<style>
+  .fp-section {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+  }
+  .fp-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: #64748b; font-weight: 700; }
+  .fp-value { color: #f1f5f9; font-weight: 600; }
+  .badge-tipo-insumo    { background: rgba(96,165,250,.15); color: #60a5fa; }
+  .badge-tipo-embalagem { background: rgba(52,211,153,.15); color: #34d399; }
+  .badge-tipo-tampa     { background: rgba(251,191,36,.15); color: #fbbf24; }
+  .badge-tipo-rotulo    { background: rgba(192,132,252,.15); color: #c084fc; }
+  @media print {
+    .sidebar, .topbar, .no-print { display: none !important; }
+    .main-wrap { margin-left: 0; }
+    body { background: #fff !important; color: #000 !important; }
+    .fp-section { border: 1px solid #ccc !important; background: #fff !important; }
+  }
+</style>
+
+<div class="px-2 px-md-3" style="max-width:960px">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{% url 'core:producao' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <h4 class="fw-bold mb-0" style="color:#f1f5f9">Ficha FP#{{ ficha.numero|stringformat:"04d" }}</h4>
+        <span class="small" style="color:#64748b">{{ empresa.nome }} · {{ ficha.data|date:"d/m/Y" }}</span>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button onclick="window.print()" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-printer me-1"></i> Imprimir
+      </button>
+      <a href="{% url 'core:editar_ficha_producao' ficha.pk %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-pencil me-1"></i> Editar
+      </a>
+    </div>
+  </div>
+
+  <!-- Dados gerais -->
+  <div class="fp-section">
+    <div class="fp-label mb-3"><i class="bi bi-clipboard2-pulse me-1"></i>Dados da Produção</div>
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="fp-label">Data</div>
+        <div class="fp-value">{{ ficha.data|date:"d/m/Y" }}</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="fp-label">Responsável</div>
+        <div class="fp-value">{{ ficha.responsavel|default:"—" }}</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="fp-label">Qtd. Produzida</div>
+        <div class="fp-value">
+          {% if ficha.quantidade_produzida %}
+            {{ ficha.quantidade_produzida|floatformat:"-3" }} {{ ficha.unidade_produzida }}
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="fp-label">Produto Final</div>
+        <div class="fp-value">
+          {% if ficha.produto_final %}{{ ficha.produto_final.nome }}
+          {% elif ficha.descricao_produto %}{{ ficha.descricao_produto }}
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      {% if ficha.tanques %}
+      <div class="col-6 col-md-4">
+        <div class="fp-label">Tanques utilizados</div>
+        <div class="fp-value">{{ ficha.tanques }}</div>
+      </div>
+      {% endif %}
+      {% if ficha.maquina %}
+      <div class="col-6 col-md-4">
+        <div class="fp-label">Máquina utilizada</div>
+        <div class="fp-value">{{ ficha.maquina }}</div>
+      </div>
+      {% endif %}
+      {% if ficha.observacoes %}
+      <div class="col-12">
+        <div class="fp-label">Observações</div>
+        <div style="color:#cbd5e1; white-space:pre-line">{{ ficha.observacoes }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Itens -->
+  <div class="fp-section">
+    <div class="fp-label mb-3"><i class="bi bi-list-check me-1"></i>Itens utilizados ({{ itens.count }})</div>
+    {% if itens %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Produto / Descrição</th>
+            <th class="text-end">Quantidade</th>
+            <th>Unidade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in itens %}
+          <tr>
+            <td>
+              <span class="badge badge-tipo-{{ item.tipo }} rounded-pill" style="font-size:.72rem;padding:3px 10px;font-weight:700">
+                {{ item.get_tipo_display }}
+              </span>
+            </td>
+            <td>
+              {% if item.produto %}
+                <span class="fw-semibold">{{ item.produto.nome }}</span>
+                {% if item.descricao %}<span class="text-muted small"> — {{ item.descricao }}</span>{% endif %}
+              {% else %}
+                {{ item.descricao|default:"—" }}
+              {% endif %}
+            </td>
+            <td class="text-end fw-bold">{{ item.quantidade|floatformat:"-3" }}</td>
+            <td>{{ item.unidade }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted small mb-0">Nenhum item registrado.</p>
+    {% endif %}
+  </div>
+
+  <!-- Perdas -->
+  <div class="fp-section">
+    <div class="fp-label mb-3"><i class="bi bi-exclamation-triangle me-1 text-warning"></i>Perdas ({{ perdas.count }})</div>
+    {% if perdas %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Produto / Descrição</th>
+            <th class="text-end">Quantidade</th>
+            <th>Unidade</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for perda in perdas %}
+          <tr>
+            <td>
+              {% if perda.produto %}
+                <span class="fw-semibold">{{ perda.produto.nome }}</span>
+                {% if perda.descricao %}<span class="text-muted small"> — {{ perda.descricao }}</span>{% endif %}
+              {% else %}
+                {{ perda.descricao|default:"—" }}
+              {% endif %}
+            </td>
+            <td class="text-end fw-bold text-danger">{{ perda.quantidade|floatformat:"-3" }}</td>
+            <td>{{ perda.unidade }}</td>
+            <td class="text-muted small">{{ perda.motivo|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted small mb-0">Nenhuma perda registrada.</p>
+    {% endif %}
+  </div>
+
+  <div class="text-muted small mb-5 no-print">
+    Criado por <strong>{{ ficha.criado_por.get_full_name|default:ficha.criado_por.username }}</strong>
+    em {{ ficha.criado_em|date:"d/m/Y H:i" }}
+  </div>
+
+</div>
+{% endblock %}

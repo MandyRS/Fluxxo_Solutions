@@ -110,6 +110,13 @@ urlpatterns = [
      # ---------------- MATÉRIA-PRIMA (API) ----------------
     path('materias-primas/subcategorias/', views.listar_materias_primas_por_subcategoria, name='listar_materias_primas_por_subcategoria'),
 
+    # ---------------- PRODUÇÃO ----------------
+    path('producao/', views.producao, name='producao'),
+    path('producao/nova/', views.nova_ficha_producao, name='nova_ficha_producao'),
+    path('producao/<int:ficha_id>/', views.detalhe_ficha_producao, name='detalhe_ficha_producao'),
+    path('producao/<int:ficha_id>/editar/', views.editar_ficha_producao, name='editar_ficha_producao'),
+    path('producao/<int:ficha_id>/excluir/', views.excluir_ficha_producao, name='excluir_ficha_producao'),
+
     # ---------------- PERFIL ----------------
     path('perfil/', views.perfil, name='perfil'),
     path('documentacao/', views.documentacao, name='documentacao'),

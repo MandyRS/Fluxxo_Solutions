@@ -357,6 +357,9 @@
       <a href="{% url 'core:estoque' %}" class="{% if request.resolver_match.url_name == 'estoque' %}active{% endif %}">
         <i class="bi bi-boxes"></i> Estoque
       </a>
+      <a href="{% url 'core:producao' %}" class="{% if 'producao' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-clipboard2-pulse"></i> Produção
+      </a>
       <a href="{% url 'core:configuracoes' %}" class="{% if request.resolver_match.url_name == 'configuracoes' %}active{% endif %}">
         <i class="bi bi-gear"></i> Configurações
       </a>

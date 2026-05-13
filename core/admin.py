@@ -6,7 +6,10 @@ from .models import (
     Cliente,
     Servico,
     Orcamento,
-    ItemOrcamento
+    ItemOrcamento,
+    FichaProducao,
+    ItemFichaProducao,
+    PerdaProducao,
 )
 
 # ------------------------
@@ -115,3 +118,29 @@ class ItemOrcamentoAdmin(admin.ModelAdmin):
     list_display = ('orcamento', 'produto', 'servico', 'quantidade', 'preco_unitario', 'total')
     search_fields = ('orcamento__numero', 'produto__nome', 'servico__nome')
     list_filter = ('orcamento__empresa',)
+
+
+# ============================================================
+# PRODUÇÃO
+# ============================================================
+
+class ItemFichaProducaoInline(admin.TabularInline):
+    model = ItemFichaProducao
+    extra = 1
+    fields = ('tipo', 'produto', 'descricao', 'quantidade', 'unidade')
+
+
+class PerdaProducaoInline(admin.TabularInline):
+    model = PerdaProducao
+    extra = 1
+    fields = ('produto', 'descricao', 'quantidade', 'unidade', 'motivo')
+
+
+@admin.register(FichaProducao)
+class FichaProducaoAdmin(admin.ModelAdmin):
+    list_display   = ('numero', 'empresa', 'data', 'produto_final', 'quantidade_produzida', 'unidade_produzida', 'responsavel', 'criado_por')
+    list_filter    = ('empresa', 'data')
+    search_fields  = ('numero', 'responsavel', 'produto_final__nome', 'descricao_produto')
+    ordering       = ('-data', '-criado_em')
+    readonly_fields = ('criado_em',)
+    inlines        = [ItemFichaProducaoInline, PerdaProducaoInline]

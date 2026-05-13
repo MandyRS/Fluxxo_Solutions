@@ -8,25 +8,25 @@
   <!-- Nav tabs -->
   <ul class="nav nav-tabs" id="configTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="clientes-tab" data-bs-toggle="tab" data-bs-target="#clientes" type="button" role="tab">Clientes</button>
+      <button class="nav-link active" id="clientes-tab" data-bs-toggle="tab" data-bs-target="#clientes" type="button" role="tab"><i class="bi bi-people me-1"></i>Clientes</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button" role="tab">Categorias</button>
+      <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button" role="tab"><i class="bi bi-tags me-1"></i>Categorias</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab">Produtos</button>
+      <button class="nav-link" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab"><i class="bi bi-box-seam me-1"></i>Produtos</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="materia-prima-tab" data-bs-toggle="tab" data-bs-target="#materia-prima" type="button" role="tab">Matéria Prima</button>
+      <button class="nav-link" id="producao-config-tab" data-bs-toggle="tab" data-bs-target="#producao-config" type="button" role="tab"><i class="bi bi-clipboard2-pulse me-1"></i>Produção</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="servicos-tab" data-bs-toggle="tab" data-bs-target="#servicos" type="button" role="tab">Serviços</button>
+      <button class="nav-link" id="servicos-tab" data-bs-toggle="tab" data-bs-target="#servicos" type="button" role="tab"><i class="bi bi-gear me-1"></i>Serviços</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="bancos-tab" data-bs-toggle="tab" data-bs-target="#bancos" type="button" role="tab">Bancos</button>
+      <button class="nav-link" id="bancos-tab" data-bs-toggle="tab" data-bs-target="#bancos" type="button" role="tab"><i class="bi bi-bank me-1"></i>Bancos</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="fornecedores-tab" data-bs-toggle="tab" data-bs-target="#fornecedores" type="button" role="tab">Fornecedores</button>
+      <button class="nav-link" id="fornecedores-tab" data-bs-toggle="tab" data-bs-target="#fornecedores" type="button" role="tab"><i class="bi bi-truck me-1"></i>Fornecedores</button>
     </li>
   </ul>
 
@@ -105,40 +105,178 @@
       {% endif %}
     </div>
 
-    <!-- Aba Matéria Prima -->
-    <div class="tab-pane fade" id="materia-prima" role="tabpanel">
-      {% if categorias_list|get_materia_prima_subcats|length > 0 %}
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <h4 class="mb-4 text-white">Matéria Prima por Subcategoria</h4>
-          <span class="text-white small">Escolha uma subcategoria para ver e gerenciar os produtos.</span>
-        </div>
-        <div class="row g-3">
-          {% for sub in categorias_list|get_materia_prima_subcats %}
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
-              <div class="card-body pb-2">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="card-title mb-0 text-white">{{ sub.nome }}</h5>
-                  <button
-                    class="btn btn-sm btn-outline-primary btnAbrirProdutosSubcategoriaMP"
-                    data-subcategoria-id="{{ sub.id }}"
-                    data-subcategoria-nome="{{ sub.nome }}"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalProdutosCategoria"
-                  >
-                    Ver produtos
-                  </button>
-                </div>
-                <p class="card-text small text-white mb-2">{{ sub.descricao|default:'Sem descrição.' }}</p>
-                <div class="small text-white">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
+    <!-- Aba Produção -->
+    <div class="tab-pane fade" id="producao-config" role="tabpanel">
+      <div class="mt-3">
+
+        <!-- Sub-nav pills -->
+        <ul class="nav nav-pills gap-1 mb-4" id="producaoSubTabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#prod-materia-prima" type="button">
+              <i class="bi bi-droplet me-1"></i>Matéria Prima
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#prod-embalagem" type="button">
+              <i class="bi bi-box me-1"></i>Embalagem
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#prod-tampa" type="button">
+              <i class="bi bi-circle me-1"></i>Tampa
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#prod-rotulo" type="button">
+              <i class="bi bi-tag me-1"></i>Rótulo
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+
+          <!-- Sub: Matéria Prima -->
+          <div class="tab-pane fade show active" id="prod-materia-prima">
+            {% if categorias_list|get_materia_prima_subcats|length > 0 %}
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <span class="text-muted small">Escolha uma subcategoria para ver e gerenciar os produtos.</span>
               </div>
-            </div>
+              <div class="row g-3">
+                {% for sub in categorias_list|get_materia_prima_subcats %}
+                <div class="col-12 col-md-6 col-lg-4">
+                  <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body pb-2">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title mb-0 text-white">{{ sub.nome }}</h5>
+                        <button class="btn btn-sm btn-outline-primary btnAbrirProdutosSubcategoriaMP"
+                          data-subcategoria-id="{{ sub.id }}" data-subcategoria-nome="{{ sub.nome }}"
+                          data-bs-toggle="modal" data-bs-target="#modalProdutosCategoria">Ver produtos</button>
+                      </div>
+                      <p class="card-text small text-white mb-2">{{ sub.descricao|default:'Sem descrição.' }}</p>
+                      <div class="small text-white">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="alert alert-info mt-2"><b>Passo a passo:</b> 1. Crie a categoria <b>Matéria Prima</b> na aba Categorias. 2. Adicione as subcategorias. 3. Volte aqui e cadastre os produtos.<br><small>O nome da categoria deve ser exatamente <b>Matéria Prima</b> (com acento).</small></div>
+            {% endif %}
           </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="alert alert-info mt-4"><b>Passo a passo:</b> 1. Crie a categoria <b>Matéria Prima</b> na aba Categorias. 2. Adicione as subcategorias dessa categoria. 3. Volte para esta aba e cadastre os produtos em cada subcategoria.<br><small><b>Observação:</b> para aparecer nesta aba, o nome da categoria deve ser exatamente <b>Matéria Prima</b> (com acento).</small></div>
-      {% endif %}
+
+          <!-- Sub: Embalagem -->
+          <div class="tab-pane fade" id="prod-embalagem">
+            {% with subcats=categorias_list|get_subcats_by_nome:"Embalagem" %}
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted small">{{ subcats|length }} subcategoria{% if subcats|length != 1 %}s{% endif %} cadastrada{% if subcats|length != 1 %}s{% endif %}</span>
+                <button class="btn btn-primary btn-sm btnNovaSubcategoria"
+                  data-catid="{{ cat_embalagem_id }}"
+                  data-bs-toggle="modal" data-bs-target="#modalSubcategoria">
+                  <i class="bi bi-plus-lg me-1"></i>Nova Subcategoria
+                </button>
+              </div>
+              {% if subcats|length > 0 %}
+              <div class="row g-3">
+                {% for sub in subcats %}
+                <div class="col-12 col-md-6 col-lg-4">
+                  <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body pb-2">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title mb-0 text-white">{{ sub.nome }}</h5>
+                        <button class="btn btn-sm btn-outline-primary btnAbrirProdutosSubcatProd"
+                          data-subcategoria-id="{{ sub.id }}" data-subcategoria-nome="{{ sub.nome }}"
+                          data-categoria-nome="Embalagem"
+                          data-bs-toggle="modal" data-bs-target="#modalProdutosCategoria">Ver produtos</button>
+                      </div>
+                      <p class="card-text small text-white mb-2">{{ sub.descricao|default:'Sem descrição.' }}</p>
+                      <div class="small text-white">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="alert alert-secondary">Nenhuma subcategoria ainda. Clique em <b>Nova Subcategoria</b> para criar.</div>
+              {% endif %}
+            {% endwith %}
+          </div>
+
+          <!-- Sub: Tampa -->
+          <div class="tab-pane fade" id="prod-tampa">
+            {% with subcats=categorias_list|get_subcats_by_nome:"Tampa" %}
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted small">{{ subcats|length }} subcategoria{% if subcats|length != 1 %}s{% endif %} cadastrada{% if subcats|length != 1 %}s{% endif %}</span>
+                <button class="btn btn-primary btn-sm btnNovaSubcategoria"
+                  data-catid="{{ cat_tampa_id }}"
+                  data-bs-toggle="modal" data-bs-target="#modalSubcategoria">
+                  <i class="bi bi-plus-lg me-1"></i>Nova Subcategoria
+                </button>
+              </div>
+              {% if subcats|length > 0 %}
+              <div class="row g-3">
+                {% for sub in subcats %}
+                <div class="col-12 col-md-6 col-lg-4">
+                  <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body pb-2">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title mb-0 text-white">{{ sub.nome }}</h5>
+                        <button class="btn btn-sm btn-outline-primary btnAbrirProdutosSubcatProd"
+                          data-subcategoria-id="{{ sub.id }}" data-subcategoria-nome="{{ sub.nome }}"
+                          data-categoria-nome="Tampa"
+                          data-bs-toggle="modal" data-bs-target="#modalProdutosCategoria">Ver produtos</button>
+                      </div>
+                      <p class="card-text small text-white mb-2">{{ sub.descricao|default:'Sem descrição.' }}</p>
+                      <div class="small text-white">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="alert alert-secondary">Nenhuma subcategoria ainda. Clique em <b>Nova Subcategoria</b> para criar.</div>
+              {% endif %}
+            {% endwith %}
+          </div>
+
+          <!-- Sub: Rótulo -->
+          <div class="tab-pane fade" id="prod-rotulo">
+            {% with subcats=categorias_list|get_subcats_by_nome:"Rótulo" %}
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted small">{{ subcats|length }} subcategoria{% if subcats|length != 1 %}s{% endif %} cadastrada{% if subcats|length != 1 %}s{% endif %}</span>
+                <button class="btn btn-primary btn-sm btnNovaSubcategoria"
+                  data-catid="{{ cat_rotulo_id }}"
+                  data-bs-toggle="modal" data-bs-target="#modalSubcategoria">
+                  <i class="bi bi-plus-lg me-1"></i>Nova Subcategoria
+                </button>
+              </div>
+              {% if subcats|length > 0 %}
+              <div class="row g-3">
+                {% for sub in subcats %}
+                <div class="col-12 col-md-6 col-lg-4">
+                  <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body pb-2">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title mb-0 text-white">{{ sub.nome }}</h5>
+                        <button class="btn btn-sm btn-outline-primary btnAbrirProdutosSubcatProd"
+                          data-subcategoria-id="{{ sub.id }}" data-subcategoria-nome="{{ sub.nome }}"
+                          data-categoria-nome="Rótulo"
+                          data-bs-toggle="modal" data-bs-target="#modalProdutosCategoria">Ver produtos</button>
+                      </div>
+                      <p class="card-text small text-white mb-2">{{ sub.descricao|default:'Sem descrição.' }}</p>
+                      <div class="small text-white">{{ sub.produtos.count }} produto{% if sub.produtos.count != 1 %}s{% endif %}</div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="alert alert-secondary">Nenhuma subcategoria ainda. Clique em <b>Nova Subcategoria</b> para criar.</div>
+              {% endif %}
+            {% endwith %}
+          </div>
+
+        </div><!-- fim sub tab-content -->
+      </div>
     </div>
 
     <!-- Aba Serviços -->
@@ -648,6 +786,11 @@ $(document).ready(function(){
       return n === 'matéria prima' || n === 'materia prima';
     });
   }
+  function obterCategoriaPorNome(nome) {
+    return categoriasList.find(function(c) {
+      return (c.nome || '').trim().toLowerCase() === nome.trim().toLowerCase();
+    });
+  }
   function subcategoriaEhMateriaPrima(subcategoriaId) {
     if (!subcategoriaId) return false;
     var catMP = obterCategoriaMateriaPrima();
@@ -920,6 +1063,22 @@ $(document).ready(function(){
     $('#btnNovoProdutoModalCategoria').prop('disabled', false);
   });
 
+  $(document).on('click', '.btnAbrirProdutosSubcatProd', function() {
+    var subId = $(this).data('subcategoria-id');
+    var subNome = $(this).data('subcategoria-nome');
+    var catNome = $(this).data('categoria-nome');
+    var cat = obterCategoriaPorNome(catNome);
+    if (!cat) { alert('Categoria "' + catNome + '" não encontrada. Verifique o nome na aba Categorias.'); return; }
+
+    categoriaProdutosAtual = cat.id;
+    subcategoriaProdutosAtual = subId;
+    $('#modalProdutosCategoria .modal-title').text(catNome + ' - ' + subNome);
+    preencherSubcategoriasModalProdutos(categoriaProdutosAtual);
+    $('#filtroSubcategoriaProdutos').val(String(subId));
+    renderTabelaProdutosModal(subcategoriaProdutosAtual);
+    $('#btnNovoProdutoModalCategoria').prop('disabled', false);
+  });
+
   $('#filtroSubcategoriaProdutos').on('change', function() {
     subcategoriaProdutosAtual = $(this).val() || null;
     renderTabelaProdutosModal(subcategoriaProdutosAtual);
@@ -1079,6 +1238,19 @@ $(document).ready(function(){
       else alert(data.mensagem || 'Erro ao excluir.');
     });
   });
+
+  // ---- PRODUÇÃO: abrir modal para novas embalagens / tampas / rótulos ----
+  window.abrirModalNovoProdProducao = function(categoria) {
+    $('#formProduto')[0].reset();
+    $('#produto-id').val('');
+    $('#produto-categoria').val(categoria);
+    $('#produto-subcategoria').val('');
+    var nomes = {embalagem: 'Nova Embalagem', tampa: 'Nova Tampa', rotulo: 'Novo Rótulo'};
+    $('#modalProduto .modal-title').text(nomes[categoria] || 'Novo Produto');
+    $('#toggleFichaTecnica').closest('.form-check').hide();
+    $('#secaoFichaTecnica').hide();
+    $('#modalProduto').modal('show');
+  };
 
   // ---- SERVIÇOS ----
   $(document).on('click', '.btn-editar-servico', function(){

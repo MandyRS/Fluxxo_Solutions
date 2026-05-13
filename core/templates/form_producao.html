@@ -1,0 +1,403 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block topbar_title %}{% if ficha %}Editar Ficha FP#{{ ficha.numero|stringformat:"04d" }}{% else %}Nova Ficha de Produção{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+  .section-card {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .section-label {
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .12em;
+    color: #64748b; font-weight: 700; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .inline-row {
+    display: grid; grid-template-columns: 120px 1fr 90px 80px 32px;
+    gap: 8px; align-items: start; margin-bottom: 8px;
+  }
+  .inline-row-perda {
+    display: grid; grid-template-columns: 1fr 90px 80px 1fr 32px;
+    gap: 8px; align-items: start; margin-bottom: 8px;
+  }
+  .btn-remove-row {
+    width: 32px; height: 32px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3);
+    color: #f87171; border-radius: 8px; cursor: pointer; margin-top: 28px;
+    flex-shrink: 0;
+  }
+  .btn-remove-row:hover { background: rgba(239,68,68,.25); }
+  .add-row-btn {
+    background: rgba(99,102,241,.1); border: 1px dashed rgba(99,102,241,.4);
+    color: #a5b4fc; border-radius: 10px; padding: 8px 16px;
+    font-size: .82rem; font-weight: 600; cursor: pointer; width: 100%;
+    transition: background .15s;
+  }
+  .add-row-btn:hover { background: rgba(99,102,241,.2); }
+  .tipo-badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+  select.tipo-select option[value="insumo"]    { color: #60a5fa; }
+  select.tipo-select option[value="embalagem"] { color: #34d399; }
+  select.tipo-select option[value="tampa"]     { color: #fbbf24; }
+  select.tipo-select option[value="rotulo"]    { color: #c084fc; }
+  @media (max-width: 768px) {
+    .inline-row, .inline-row-perda { grid-template-columns: 1fr; }
+    .btn-remove-row { margin-top: 0; }
+  }
+</style>
+
+<div class="px-2 px-md-3" style="max-width:960px">
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'core:producao' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4 class="fw-bold mb-0" style="color:#f1f5f9">
+        {% if ficha %}Editar Ficha FP#{{ ficha.numero|stringformat:"04d" }}{% else %}Nova Ficha de Produção{% endif %}
+      </h4>
+      <span class="small" style="color:#64748b">{{ empresa.nome }}</span>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" id="fichaForm">
+    {% csrf_token %}
+
+    <!-- ── CABEÇALHO ── -->
+    <div class="section-card">
+      <div class="section-label"><i class="bi bi-clipboard2-pulse text-primary"></i> Dados da Produção</div>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Data <span class="text-danger">*</span></label>
+          <input type="date" name="data" class="form-control"
+                 value="{{ ficha.data|date:'Y-m-d'|default:'' }}" required>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Produto Final (cadastrado)</label>
+          <select name="produto_final" class="form-select">
+            <option value="">— Selecionar produto —</option>
+            {% for p in produtos %}
+            <option value="{{ p.pk }}"
+              {% if ficha and ficha.produto_final_id == p.pk %}selected{% endif %}>
+              {{ p.nome }}{% if p.codigo %} ({{ p.codigo }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Descrição do produto (se não cadastrado)</label>
+          <input type="text" name="descricao_produto" class="form-control" placeholder="Ex: Produto X lote 01"
+                 value="{{ ficha.descricao_produto|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Qtd. Produzida</label>
+          <input type="number" name="quantidade_produzida" class="form-control" step="0.001" min="0"
+                 placeholder="0" value="{{ ficha.quantidade_produzida|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Unidade</label>
+          <select name="unidade_produzida" class="form-select">
+            {% with sel=ficha.unidade_produzida|default:"un" %}
+            <option value="ml"    {% if sel == "ml"    %}selected{% endif %}>ml</option>
+            <option value="l"     {% if sel == "l"     %}selected{% endif %}>L</option>
+            <option value="g"     {% if sel == "g"     %}selected{% endif %}>g</option>
+            <option value="kg"    {% if sel == "kg"    %}selected{% endif %}>kg</option>
+            <option value="pct"   {% if sel == "pct"   %}selected{% endif %}>pct</option>
+            <option value="un"    {% if sel == "un"    %}selected{% endif %}>un</option>
+            <option value="cx"    {% if sel == "cx"    %}selected{% endif %}>cx</option>
+            <option value="outro" {% if sel == "outro" %}selected{% endif %}>Outro</option>
+            {% endwith %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Responsável</label>
+          <input type="text" name="responsavel" class="form-control" placeholder="Nome do responsável"
+                 value="{{ ficha.responsavel|default:'' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Tanques utilizados</label>
+          <input type="text" name="tanques" class="form-control" placeholder="Ex: T1, T3"
+                 value="{{ ficha.tanques|default:'' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Máquina utilizada</label>
+          <input type="text" name="maquina" class="form-control" placeholder="Ex: Enchedora linha 2"
+                 value="{{ ficha.maquina|default:'' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Observações</label>
+          <textarea name="observacoes" class="form-control" rows="3"
+                    placeholder="Anotações, condições do processo, etc.">{{ ficha.observacoes|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ITENS (insumos, embalagens, tampas, rótulos) ── -->
+    <div class="section-card">
+      <div class="section-label"><i class="bi bi-list-check text-success"></i> Itens utilizados</div>
+
+      <div class="d-none d-md-grid mb-1" style="grid-template-columns:120px 1fr 90px 80px 32px;gap:8px;">
+        <span class="small text-white fw-bold">Tipo</span>
+        <span class="small text-white fw-bold">Produto / Descrição</span>
+        <span class="small text-white fw-bold">Quantidade</span>
+        <span class="small text-white fw-bold">Unidade</span>
+        <span></span>
+      </div>
+
+      <div id="itens-container">
+        {% if ficha and itens %}
+          {% for item in itens %}
+          <div class="inline-row item-row">
+            <div>
+              <select name="item_tipo" class="form-select form-select-sm tipo-select" onchange="onTipoChange(this)">
+                <option value="insumo"    {% if item.tipo == "insumo"    %}selected{% endif %}>Insumo</option>
+                <option value="embalagem" {% if item.tipo == "embalagem" %}selected{% endif %}>Embalagem</option>
+                <option value="tampa"     {% if item.tipo == "tampa"     %}selected{% endif %}>Tampa</option>
+                <option value="rotulo"    {% if item.tipo == "rotulo"    %}selected{% endif %}>Rótulo</option>
+              </select>
+            </div>
+            <div class="produto-wrapper">
+              <select name="item_produto" class="form-select form-select-sm produto-select">
+                <option value="">— selecionar produto —</option>
+                {% for p in produtos %}{% if item.tipo == 'insumo' and p.categoria == 'materia_prima' or item.tipo == 'embalagem' and p.categoria == 'embalagem' or item.tipo == 'tampa' and p.categoria == 'tampa' or item.tipo == 'rotulo' and p.categoria == 'rotulo' %}
+                <option value="{{ p.pk }}" {% if item.produto_id == p.pk %}selected{% endif %}>{{ p.nome }}</option>
+                {% endif %}{% endfor %}
+              </select>
+              <input type="text" name="item_descricao" class="form-control form-control-sm mt-1"
+                     placeholder="ou descreva manualmente" value="{{ item.descricao }}">
+            </div>
+            <div>
+              <input type="number" name="item_quantidade" class="form-control form-control-sm"
+                     step="0.001" min="0" placeholder="Qtd" value="{{ item.quantidade }}">
+            </div>
+            <div>
+              <select name="item_unidade" class="form-select form-select-sm">
+                {% with u=item.unidade %}
+                <option value="ml"    {% if u == "ml"    %}selected{% endif %}>ml</option>
+                <option value="l"     {% if u == "l"     %}selected{% endif %}>L</option>
+                <option value="g"     {% if u == "g"     %}selected{% endif %}>g</option>
+                <option value="kg"    {% if u == "kg"    %}selected{% endif %}>kg</option>
+                <option value="pct"   {% if u == "pct"   %}selected{% endif %}>pct</option>
+                <option value="un"    {% if u == "un"    %}selected{% endif %}>un</option>
+                <option value="cx"    {% if u == "cx"    %}selected{% endif %}>cx</option>
+                <option value="outro" {% if u == "outro" %}selected{% endif %}>Outro</option>
+                {% endwith %}
+              </select>
+            </div>
+            <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remover">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <button type="button" class="add-row-btn mt-2" onclick="addItemRow()">
+        <i class="bi bi-plus-lg me-1"></i> Adicionar item
+      </button>
+    </div>
+
+    <!-- ── PERDAS ── -->
+    <div class="section-card">
+      <div class="section-label"><i class="bi bi-exclamation-triangle text-warning"></i> Perdas</div>
+
+      <div class="d-none d-md-grid mb-1" style="grid-template-columns:1fr 90px 80px 1fr 32px;gap:8px;">
+        <span class="small text-white fw-bold">Produto / Descrição</span>
+        <span class="small text-white fw-bold">Quantidade</span>
+        <span class="small text-white fw-bold">Unidade</span>
+        <span class="small text-white fw-bold">Motivo</span>
+        <span></span>
+      </div>
+
+      <div id="perdas-container">
+        {% if ficha and perdas %}
+          {% for p in perdas %}
+          <div class="inline-row-perda perda-row">
+            <div>
+              <select name="perda_produto" class="form-select form-select-sm produto-select">
+                <option value="">— produto cadastrado (opcional) —</option>
+                {% for prod in produtos %}
+                <option value="{{ prod.pk }}" {% if p.produto_id == prod.pk %}selected{% endif %}>{{ prod.nome }}</option>
+                {% endfor %}
+              </select>
+              <input type="text" name="perda_descricao" class="form-control form-control-sm mt-1"
+                     placeholder="ou descreva manualmente" value="{{ p.descricao }}">
+            </div>
+            <div>
+              <input type="number" name="perda_quantidade" class="form-control form-control-sm"
+                     step="0.001" min="0" placeholder="Qtd" value="{{ p.quantidade }}">
+            </div>
+            <div>
+              <select name="perda_unidade" class="form-select form-select-sm">
+                {% with u=p.unidade %}
+                <option value="ml"    {% if u == "ml"    %}selected{% endif %}>ml</option>
+                <option value="l"     {% if u == "l"     %}selected{% endif %}>L</option>
+                <option value="g"     {% if u == "g"     %}selected{% endif %}>g</option>
+                <option value="kg"    {% if u == "kg"    %}selected{% endif %}>kg</option>
+                <option value="pct"   {% if u == "pct"   %}selected{% endif %}>pct</option>
+                <option value="un"    {% if u == "un"    %}selected{% endif %}>un</option>
+                <option value="cx"    {% if u == "cx"    %}selected{% endif %}>cx</option>
+                <option value="outro" {% if u == "outro" %}selected{% endif %}>Outro</option>
+                {% endwith %}
+              </select>
+            </div>
+            <div>
+              <textarea name="perda_motivo" class="form-control form-control-sm" rows="1"
+                        placeholder="Motivo da perda">{{ p.motivo }}</textarea>
+            </div>
+            <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remover">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <button type="button" class="add-row-btn mt-2" onclick="addPerdaRow()">
+        <i class="bi bi-plus-lg me-1"></i> Adicionar perda
+      </button>
+    </div>
+
+    <!-- Ações -->
+    <div class="d-flex gap-2 justify-content-end mt-2 mb-5">
+      <a href="{% url 'core:producao' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary px-5">
+        <i class="bi bi-check-lg me-1"></i>
+        {% if ficha %}Salvar alterações{% else %}Criar ficha{% endif %}
+      </button>
+    </div>
+  </form>
+
+</div>
+
+<script>
+// ── Produtos para JS (com categoria) ──
+const PRODUTOS = [
+  {% for p in produtos %}
+  { id: {{ p.pk }}, nome: "{{ p.nome|escapejs }}", cat: "{{ p.categoria }}" },
+  {% endfor %}
+];
+
+// Mapeamento tipo-ficha → categoria do Produto
+const TIPO_CAT = {
+  insumo:    'materia_prima',
+  embalagem: 'embalagem',
+  tampa:     'tampa',
+  rotulo:    'rotulo',
+};
+
+const UNIDADES = ['ml','L','g','kg','pct','un','cx','Outro'];
+const UNID_VALS = ['ml','l','g','kg','pct','un','cx','outro'];
+
+function produtoSelectHTML(name, tipo, selectedId) {
+  const cat = TIPO_CAT[tipo] || '';
+  const lista = cat ? PRODUTOS.filter(p => p.cat === cat) : PRODUTOS;
+  let html = `<select name="${name}" class="form-select form-select-sm produto-select">`;
+  html += `<option value="">— selecionar produto —</option>`;
+  lista.forEach(p => {
+    const sel = (selectedId && p.id == selectedId) ? 'selected' : '';
+    html += `<option value="${p.id}" ${sel}>${p.nome}</option>`;
+  });
+  html += `</select>`;
+  return html;
+}
+
+function unidSelectHTML(name, val='un') {
+  let html = `<select name="${name}" class="form-select form-select-sm">`;
+  UNID_VALS.forEach((v, i) => {
+    html += `<option value="${v}" ${v === val ? 'selected' : ''}>${UNIDADES[i]}</option>`;
+  });
+  html += `</select>`;
+  return html;
+}
+
+// Reconstrói o select de produto quando o tipo muda
+function onTipoChange(sel) {
+  const row = sel.closest('.item-row');
+  const tipo = sel.value;
+  const wrapper = row.querySelector('.produto-wrapper');
+  wrapper.innerHTML = produtoSelectHTML('item_produto', tipo, null);
+}
+
+function addItemRow(tipo, selectedProdId, descVal, qtdVal, unidVal) {
+  tipo = tipo || 'insumo';
+  const container = document.getElementById('itens-container');
+  const div = document.createElement('div');
+  div.className = 'inline-row item-row';
+  div.innerHTML = `
+    <div>
+      <select name="item_tipo" class="form-select form-select-sm tipo-select" onchange="onTipoChange(this)">
+        <option value="insumo"    ${tipo==='insumo'    ?'selected':''}>Insumo</option>
+        <option value="embalagem" ${tipo==='embalagem' ?'selected':''}>Embalagem</option>
+        <option value="tampa"     ${tipo==='tampa'     ?'selected':''}>Tampa</option>
+        <option value="rotulo"    ${tipo==='rotulo'    ?'selected':''}>Rótulo</option>
+      </select>
+    </div>
+    <div class="produto-wrapper">
+      ${produtoSelectHTML('item_produto', tipo, selectedProdId || null)}
+      <input type="text" name="item_descricao" class="form-control form-control-sm mt-1"
+             placeholder="ou descreva manualmente" value="${descVal || ''}">
+    </div>
+    <div>
+      <input type="number" name="item_quantidade" class="form-control form-control-sm"
+             step="0.001" min="0" placeholder="Qtd" value="${qtdVal || ''}">
+    </div>
+    <div>${unidSelectHTML('item_unidade', unidVal || 'un')}</div>
+    <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remover">
+      <i class="bi bi-x"></i>
+    </button>
+  `;
+  container.appendChild(div);
+}
+
+function addPerdaRow() {
+  const container = document.getElementById('perdas-container');
+  const div = document.createElement('div');
+  div.className = 'inline-row-perda perda-row';
+  div.innerHTML = `
+    <div>
+      ${produtoSelectHTML('perda_produto')}
+      <input type="text" name="perda_descricao" class="form-control form-control-sm mt-1"
+             placeholder="ou descreva manualmente">
+    </div>
+    <div>
+      <input type="number" name="perda_quantidade" class="form-control form-control-sm"
+             step="0.001" min="0" placeholder="Qtd">
+    </div>
+    <div>${unidSelectHTML('perda_unidade')}</div>
+    <div>
+      <textarea name="perda_motivo" class="form-control form-control-sm" rows="1"
+                placeholder="Motivo da perda"></textarea>
+    </div>
+    <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remover">
+      <i class="bi bi-x"></i>
+    </button>
+  `;
+  container.appendChild(div);
+}
+
+function removeRow(btn) {
+  btn.closest('.item-row, .perda-row').remove();
+}
+
+// Adiciona 1 linha vazia em fichas novas
+{% if not ficha %}
+document.addEventListener('DOMContentLoaded', () => {
+  addItemRow();
+});
+{% endif %}
+</script>
+{% endblock %}

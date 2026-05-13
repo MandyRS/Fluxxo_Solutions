@@ -362,3 +362,86 @@ class ItemEntradaComercial(models.Model):
 
     def __str__(self):
         return f"{self.produto.nome} x {self.quantidade}"
+
+
+# ============================================================
+# MÓDULO DE PRODUÇÃO
+# ============================================================
+
+class FichaProducao(models.Model):
+    UNIDADE_CHOICES = [
+        ('ml', 'ml'), ('l', 'L'), ('g', 'g'), ('kg', 'kg'),
+        ('pct', 'pct'), ('un', 'un'), ('cx', 'cx'), ('outro', 'Outro'),
+    ]
+
+    empresa       = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    numero        = models.PositiveIntegerField(editable=False)
+    data          = models.DateField()
+    produto_final = models.ForeignKey(
+        Produto, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='fichas_producao',
+    )
+    descricao_produto      = models.CharField(max_length=200, blank=True,
+        verbose_name='Descrição do produto (se não cadastrado)')
+    quantidade_produzida   = models.DecimalField(max_digits=14, decimal_places=3, default=0)
+    unidade_produzida      = models.CharField(max_length=20, choices=UNIDADE_CHOICES, default='un')
+    tanques                = models.CharField(max_length=255, blank=True, verbose_name='Tanques utilizados')
+    maquina                = models.CharField(max_length=255, blank=True, verbose_name='Máquina utilizada')
+    responsavel            = models.CharField(max_length=200, blank=True, verbose_name='Responsável')
+    observacoes            = models.TextField(blank=True, verbose_name='Observações')
+    criado_por             = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    criado_em              = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-data', '-criado_em']
+        verbose_name = 'Ficha de Produção'
+        verbose_name_plural = 'Fichas de Produção'
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            ultimo = FichaProducao.objects.filter(empresa=self.empresa).order_by('-numero').first()
+            self.numero = (ultimo.numero + 1) if ultimo else 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"FP#{self.numero:04d} - {self.data}"
+
+
+class ItemFichaProducao(models.Model):
+    TIPO_CHOICES = [
+        ('insumo',    'Insumo'),
+        ('embalagem', 'Embalagem'),
+        ('tampa',     'Tampa'),
+        ('rotulo',    'Rótulo'),
+    ]
+    UNIDADE_CHOICES = FichaProducao.UNIDADE_CHOICES
+
+    ficha       = models.ForeignKey(FichaProducao, on_delete=models.CASCADE, related_name='itens')
+    tipo        = models.CharField(max_length=20, choices=TIPO_CHOICES, default='insumo')
+    produto     = models.ForeignKey(
+        Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_ficha'
+    )
+    descricao   = models.CharField(max_length=200, blank=True, verbose_name='Descrição (se não cadastrado)')
+    quantidade  = models.DecimalField(max_digits=14, decimal_places=3)
+    unidade     = models.CharField(max_length=20, choices=UNIDADE_CHOICES, default='un')
+
+    def __str__(self):
+        nome = self.produto.nome if self.produto else self.descricao
+        return f"{self.get_tipo_display()} — {nome} ({self.quantidade} {self.unidade})"
+
+
+class PerdaProducao(models.Model):
+    UNIDADE_CHOICES = FichaProducao.UNIDADE_CHOICES
+
+    ficha      = models.ForeignKey(FichaProducao, on_delete=models.CASCADE, related_name='perdas')
+    produto    = models.ForeignKey(
+        Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='perdas_producao'
+    )
+    descricao  = models.CharField(max_length=200, blank=True, verbose_name='Descrição (se não cadastrado)')
+    quantidade = models.DecimalField(max_digits=14, decimal_places=3)
+    unidade    = models.CharField(max_length=20, choices=UNIDADE_CHOICES, default='un')
+    motivo     = models.TextField(blank=True, verbose_name='Motivo da perda')
+
+    def __str__(self):
+        nome = self.produto.nome if self.produto else self.descricao
+        return f"Perda — {nome} ({self.quantidade} {self.unidade})"

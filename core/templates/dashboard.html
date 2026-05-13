@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load extra_filters %}
 
 {% block topbar_title %}Dashboard{% endblock %}
 
@@ -53,16 +54,16 @@
           <div>
             <p class="section-title mb-1">Saldo Bancário</p>
             <h4 class="fw-bold mb-0 {% if saldo_mes >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
-              R$ {{ saldo_mes|floatformat:2 }}
+              R$ {{ saldo_mes|br_number }}
             </h4>
           </div>
           <div class="kpi-icon {% if saldo_mes >= 0 %}bg-success bg-opacity-10 text-success{% else %}bg-danger bg-opacity-10 text-danger{% endif %}">
             <i class="bi bi-bank"></i>
           </div>
         </div>
-        <div class="mt-2 small text-muted">Receitas: <span class="text-success fw-semibold">R$ {{ receitas_mes|floatformat:2 }}</span></div>
-        <div class="small text-muted">Despesas: <span class="text-danger fw-semibold">R$ {{ despesas_mes|floatformat:2 }}</span></div>
-        <div class="small text-muted">Saldo total: <span class="fw-semibold" style="color:#e2e8f0">R$ {{ saldo_bancario_total|floatformat:2 }}</span></div>
+        <div class="mt-2 small text-muted">Receitas: <span class="text-success fw-semibold">R$ {{ receitas_mes|br_number }}</span></div>
+        <div class="small text-muted">Despesas: <span class="text-danger fw-semibold">R$ {{ despesas_mes|br_number }}</span></div>
+        <div class="small text-muted">Saldo total: <span class="fw-semibold" style="color:#e2e8f0">R$ {{ saldo_bancario_total|br_number }}</span></div>
       </div>
     </div>
 
@@ -77,8 +78,8 @@
             <i class="bi bi-file-earmark-text"></i>
           </div>
         </div>
-        <div class="mt-2 small text-muted">Valor do mês: <span class="fw-semibold" style="color:#e2e8f0">R$ {{ orcamentos_valor_mes_atual|floatformat:2 }}</span></div>
-        <div class="small text-muted">Total geral: <span class="fw-semibold" style="color:#e2e8f0">{{ orcamentos }} (R$ {{ orcamentos_valor_total|floatformat:2 }})</span></div>
+        <div class="mt-2 small text-muted">Valor do mês: <span class="fw-semibold" style="color:#e2e8f0">R$ {{ orcamentos_valor_mes_atual|br_number }}</span></div>
+        <div class="small text-muted">Total geral: <span class="fw-semibold" style="color:#e2e8f0">{{ orcamentos }} (R$ {{ orcamentos_valor_total|br_number }})</span></div>
         {% if alerta_orcamentos %}
         <div class="small text-warning fw-semibold mt-1"><i class="bi bi-clock me-1"></i>{{ alerta_orcamentos.count }} entrega{% if alerta_orcamentos.count != 1 %}s{% endif %} em até 3 dias</div>
         {% endif %}
@@ -90,7 +91,7 @@
         <div class="d-flex justify-content-between align-items-start">
           <div>
             <p class="section-title mb-1">Compras do Mês</p>
-            <h4 class="fw-bold mb-0 text-info">R$ {{ valor_entradas_mes|floatformat:2 }}</h4>
+            <h4 class="fw-bold mb-0 text-info">R$ {{ valor_entradas_mes|br_number }}</h4>
           </div>
           <div class="kpi-icon bg-info bg-opacity-10 text-info">
             <i class="bi bi-box-arrow-in-down"></i>
